@@ -58,6 +58,13 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
             </Link>
           ))}
           <Link
+            to="/abonnement"
+            className={cn(NAV_LINK, "hidden px-3 lg:inline-flex xl:px-4")}
+            activeProps={{ className: "text-accent" }}
+          >
+            Abonnement
+          </Link>
+          <Link
             to="/commande"
             aria-label={count > 0 ? `Panier (${count} article${count > 1 ? "s" : ""})` : "Panier"}
             className="flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 lg:ml-2 lg:px-5"
@@ -113,6 +120,14 @@ function MobileMenu() {
               {section.label}
             </Link>
           ))}
+          <Link
+            to="/abonnement"
+            onClick={() => setOpen(false)}
+            className={cn(NAV_LINK, "px-3 py-3 text-base")}
+            activeProps={{ className: "text-accent" }}
+          >
+            Abonnement
+          </Link>
           <Link
             to="/commande"
             onClick={() => setOpen(false)}
@@ -173,6 +188,11 @@ export function SiteFooter() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link to="/abonnement" className={FOOTER_LINK}>
+                Abonnement
+              </Link>
+            </li>
             <li>
               <Link to="/commande" className={FOOTER_LINK}>
                 Panier

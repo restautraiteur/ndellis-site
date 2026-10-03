@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AbonnementRouteImport } from './routes/abonnement'
 import { Route as CommandeRouteImport } from './routes/commande'
 import { Route as ConfirmationRouteImport } from './routes/confirmation'
 import { Route as ApiPublicPaydunyaIpnRouteImport } from './routes/api/public/paydunya-ipn'
@@ -17,6 +18,11 @@ import { Route as ApiPublicPaydunyaIpnRouteImport } from './routes/api/public/pa
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AbonnementRoute = AbonnementRouteImport.update({
+  id: '/abonnement',
+  path: '/abonnement',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommandeRoute = CommandeRouteImport.update({
@@ -37,12 +43,14 @@ const ApiPublicPaydunyaIpnRoute = ApiPublicPaydunyaIpnRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/abonnement': typeof AbonnementRoute
   '/commande': typeof CommandeRoute
   '/confirmation': typeof ConfirmationRoute
   '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/abonnement': typeof AbonnementRoute
   '/commande': typeof CommandeRoute
   '/confirmation': typeof ConfirmationRoute
   '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
@@ -50,18 +58,30 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/abonnement': typeof AbonnementRoute
   '/commande': typeof CommandeRoute
   '/confirmation': typeof ConfirmationRoute
   '/api/public/paydunya-ipn': typeof ApiPublicPaydunyaIpnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/commande' | '/confirmation' | '/api/public/paydunya-ipn'
+  fullPaths:
+    | '/'
+    | '/abonnement'
+    | '/commande'
+    | '/confirmation'
+    | '/api/public/paydunya-ipn'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/commande' | '/confirmation' | '/api/public/paydunya-ipn'
+  to:
+    | '/'
+    | '/abonnement'
+    | '/commande'
+    | '/confirmation'
+    | '/api/public/paydunya-ipn'
   id:
     | '__root__'
     | '/'
+    | '/abonnement'
     | '/commande'
     | '/confirmation'
     | '/api/public/paydunya-ipn'
@@ -69,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AbonnementRoute: typeof AbonnementRoute
   CommandeRoute: typeof CommandeRoute
   ConfirmationRoute: typeof ConfirmationRoute
   ApiPublicPaydunyaIpnRoute: typeof ApiPublicPaydunyaIpnRoute
@@ -81,6 +102,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/abonnement': {
+      id: '/abonnement'
+      path: '/abonnement'
+      fullPath: '/abonnement'
+      preLoaderRoute: typeof AbonnementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/commande': {
@@ -109,6 +137,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AbonnementRoute: AbonnementRoute,
   CommandeRoute: CommandeRoute,
   ConfirmationRoute: ConfirmationRoute,
   ApiPublicPaydunyaIpnRoute: ApiPublicPaydunyaIpnRoute,

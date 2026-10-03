@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { GlassWater, Minus, Plus, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
+import fondFruits from "@/assets/fond-fruits.jpg";
 import { Skeleton } from "@ui/components/ui/skeleton";
 import { SectionPill } from "@/components/section-pill";
 import { useCart } from "@/features/cart/cart-context";
@@ -50,8 +51,19 @@ export function JuiceSection() {
   if (!isLoading && juices.length === 0) return null;
 
   return (
-    <section id="jus" className="scroll-mt-24 border-y border-border/70 bg-cream py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-4">
+    <section
+      id="jus"
+      className="relative scroll-mt-24 overflow-hidden border-y border-border/70 bg-cream py-16 sm:py-20"
+    >
+      {/* fond de fruits : le blanc de la photo se fond dans le crème (multiply), opacité réduite pour la lisibilité */}
+      <img
+        src={fondFruits}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover opacity-40 mix-blend-multiply"
+      />
+      <div className="relative mx-auto max-w-6xl px-4">
         <SectionPill>Jus frais maison</SectionPill>
         <h2 className="mt-3 font-display text-4xl font-bold uppercase leading-none tracking-tight text-primary sm:text-6xl">
           Nos jus

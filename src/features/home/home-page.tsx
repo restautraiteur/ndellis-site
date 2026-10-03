@@ -4,6 +4,7 @@ import { SiteFooter, SiteHeader } from "@/components/site-header";
 import { HeroShowcase } from "@/features/home/components/hero-showcase";
 import { WeeklyMenu } from "@/features/menu/components/weekly-menu";
 import { JuiceSection } from "@/features/juices/components/juice-section";
+import { SubscriptionCta } from "@/features/subscriptions/subscription-cta";
 import { TestimonialsSection } from "@/features/home/components/testimonials-section";
 import { GalleryMarquee } from "@/features/home/components/gallery-marquee";
 import { CulinaryJourneySection } from "@/features/home/components/culinary-journey-section";
@@ -23,6 +24,8 @@ export function HomePage() {
       <HeroShowcase />
 
       <WeeklyMenu />
+
+      <SubscriptionCta />
 
       <JuiceSection />
 

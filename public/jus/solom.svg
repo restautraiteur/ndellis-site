@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Jus Solom">
+  <rect width="800" height="600" fill="#F3E4E2"/>
+  <circle cx="620" cy="110" r="150" fill="#6B2430" opacity="0.12"/>
+  <circle cx="140" cy="520" r="190" fill="#6B2430" opacity="0.10"/>
+  <!-- Grande bouteille -->
+  <rect x="318" y="92" width="44" height="34" rx="6" fill="#3b2a1e"/>
+  <path d="M322 126 h36 v48 c0 22 52 34 52 84 v232 a26 26 0 0 1 -26 26 h-88 a26 26 0 0 1 -26 -26 v-232 c0 -50 52 -62 52 -84z" fill="#ffffff" opacity="0.55"/>
+  <path d="M282 300 h116 v190 a22 22 0 0 1 -22 22 h-72 a22 22 0 0 1 -22 -22z" fill="#6B2430"/>
+  <path d="M322 126 h36 v48 c0 22 52 34 52 84 v232 a26 26 0 0 1 -26 26 h-88 a26 26 0 0 1 -26 -26 v-232 c0 -50 52 -62 52 -84z" fill="none" stroke="#3b2a1e" stroke-width="6" opacity="0.35"/>
+  <!-- Petite bouteille -->
+  <rect x="468" y="292" width="30" height="24" rx="5" fill="#3b2a1e"/>
+  <path d="M471 316 h24 v28 c0 14 30 20 30 50 v100 a18 18 0 0 1 -18 18 h-48 a18 18 0 0 1 -18 -18 v-100 c0 -30 30 -36 30 -50z" fill="#ffffff" opacity="0.55"/>
+  <path d="M441 410 h84 v84 a18 18 0 0 1 -18 18 h-48 a18 18 0 0 1 -18 -18z" fill="#6B2430"/>
+  <path d="M471 316 h24 v28 c0 14 30 20 30 50 v100 a18 18 0 0 1 -18 18 h-48 a18 18 0 0 1 -18 -18 v-100 c0 -30 30 -36 30 -50z" fill="none" stroke="#3b2a1e" stroke-width="5" opacity="0.35"/>
+  <text x="400" y="566" text-anchor="middle" font-family="Georgia, serif" font-size="34" font-weight="700" fill="#3b2a1e">Solom</text>
+</svg>

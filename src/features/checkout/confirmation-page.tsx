@@ -20,6 +20,7 @@ type StoredOrder = {
     instructions?: string;
   };
   items: { name: string; quantity: number; price: number; day_date: string | null }[];
+  subscription?: { covered_days: string[]; discount: number; remaining: number } | null;
 };
 
 export function ConfirmationPage() {
@@ -80,6 +81,19 @@ export function ConfirmationPage() {
               </p>
             )}
 
+            {order.subscription && (
+              <div className="mt-4 rounded-lg border border-success/30 bg-success/10 p-4 text-sm">
+                <p className="font-semibold text-success">
+                  {order.subscription.covered_days.length} repas compté
+                  {order.subscription.covered_days.length > 1 ? "s" : ""} sur votre abonnement (−{" "}
+                  {formatPrice(order.subscription.discount)}).
+                </p>
+                <p className="mt-1">
+                  Il vous reste <strong>{order.subscription.remaining}</strong> repas.
+                </p>
+              </div>
+            )}
+
             <dl className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
               <Info
                 label="Nom"
@@ -110,7 +124,7 @@ export function ConfirmationPage() {
               ))}
             </ul>
             <div className="mt-3 flex justify-between border-t border-border pt-3 text-lg font-bold">
-              <span>Total</span>
+              <span>{order.subscription ? "Total payé" : "Total"}</span>
               <span>{formatPrice(order.total)}</span>
             </div>
 

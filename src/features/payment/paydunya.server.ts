@@ -1,3 +1,5 @@
+import { getRequest } from "@tanstack/react-start/server";
+
 const BASE = "https://app.paydunya.com/api/v1";
 
 function headers() {
@@ -12,8 +14,13 @@ function headers() {
 export async function createInvoice(input: {
   amount: number;
   description: string;
-  orderId: string;
   origin: string;
+  /** Commande payée, ou abonnement (`subscriptionPaymentId`). */
+  orderId?: string;
+  subscriptionPaymentId?: string;
+  /** Pages de retour (par défaut : panier et confirmation de commande). */
+  cancelPath?: string;
+  returnPath?: string;
 }) {
   if (
     !process.env["PAYDUNYA_MASTER_KEY"] ||
@@ -31,11 +38,13 @@ export async function createInvoice(input: {
       invoice: { total_amount: input.amount, description: input.description },
       store: { name: "Ndelli's Traiteur" },
       actions: {
-        cancel_url: `${input.origin}/commande?paiement=annule`,
-        return_url: `${input.origin}/confirmation`,
+        cancel_url: `${input.origin}${input.cancelPath ?? "/commande?paiement=annule"}`,
+        return_url: `${input.origin}${input.returnPath ?? "/confirmation"}`,
         callback_url: `${input.origin}/api/public/paydunya-ipn`,
       },
-      custom_data: { order_id: input.orderId },
+      custom_data: input.subscriptionPaymentId
+        ? { subscription_payment_id: input.subscriptionPaymentId }
+        : { order_id: input.orderId },
     }),
   });
   const json = (await res.json().catch(() => null)) as {
@@ -77,6 +86,34 @@ export async function confirmInvoice(token: string) {
   };
 }
 
+/** Paiement en ligne d'un abonnement : le paiement passe à « payé » (le montant encaissé et la
+ * confirmation de l'abonnement suivent côté base). */
+async function syncSubscriptionPayment(token: string) {
+  const { supabaseAdmin } = await import("@core/integrations/supabase/client.server");
+  const { data: payment } = await supabaseAdmin
+    .from("subscription_payments")
+    .select("id, status")
+    .eq("paydunya_token", token)
+    .maybeSingle();
+  if (!payment) return { status: "introuvable" as const };
+  if (payment.status === "paye") return { status: "completed" as const };
+  const result = await confirmInvoice(token);
+  if (result.status === "completed") {
+    await supabaseAdmin
+      .from("subscription_payments")
+      .update({ status: "paye", amount: result.amount })
+      .eq("id", payment.id);
+    return { status: "completed" as const };
+  }
+  if (result.status === "cancelled" || result.status === "failed") {
+    await supabaseAdmin
+      .from("subscription_payments")
+      .update({ status: "echec" })
+      .eq("id", payment.id);
+  }
+  return { status: result.status };
+}
+
 /** Confirms with PayDunya and updates the order. Returns the payment status. */
 export async function syncPayment(token: string) {
   const { supabaseAdmin } = await import("@core/integrations/supabase/client.server");
@@ -85,7 +122,7 @@ export async function syncPayment(token: string) {
     .select("id, order_type, payment_status")
     .eq("paydunya_token", token)
     .maybeSingle();
-  if (!order) return { status: "introuvable" as const };
+  if (!order) return syncSubscriptionPayment(token);
   const result = await confirmInvoice(token);
   if (result.status === "completed") {
     const paid = order.order_type === "precommande" ? "acompte_paye" : "paye";
@@ -102,4 +139,20 @@ export async function syncPayment(token: string) {
       .eq("id", order.id);
   }
   return { status: result.status };
+}
+
+/** Adresse du site d'où vient la demande (pages de retour PayDunya). */
+export function requestOrigin() {
+  const request = getRequest();
+  const requestOrigin = request.headers.get("origin");
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const requestHost = forwardedHost ?? request.headers.get("host") ?? new URL(request.url).host;
+  const origin =
+    requestOrigin && new URL(requestOrigin).host === requestHost
+      ? requestOrigin
+      : `${request.headers.get("x-forwarded-proto") ?? "https"}://${requestHost}`;
+  if (!origin.startsWith("https://") && !origin.startsWith("http://localhost:")) {
+    throw new Error("Adresse de paiement invalide. Rechargez la page et réessayez.");
+  }
+  return origin;
 }

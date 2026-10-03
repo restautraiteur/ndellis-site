@@ -11,6 +11,8 @@ export type PlaceOrderPayload = {
     instructions?: string | undefined;
     payment_method?: string | undefined;
     payment_reference?: string | undefined;
+    /** Code abonné : un plat par jour ouvré est alors pris en charge par l'abonnement. */
+    subscription_pin?: string | undefined;
   };
   /** Plat du menu (`day_product_id`) ou format de jus du catalogue (`variant_id`). */
   items: (({ day_product_id: string } | { variant_id: string }) & { quantity: number })[];
@@ -28,6 +30,7 @@ export async function placeOrder(payload: PlaceOrderPayload) {
     order_id: string;
     order_type: string;
     deposit_required: number;
+    subscription: { covered_days: string[]; discount: number; remaining: number } | null;
   };
 }
 

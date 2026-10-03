@@ -1,7 +1,7 @@
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { SiteFooter, SiteHeader } from "@/components/site-header";
@@ -17,6 +17,8 @@ import { publicMenuQuery } from "@core/domain/menu/api";
 import { juiceCatalogQuery } from "@core/domain/juices/api";
 import { startPayment } from "@/features/payment/paydunya.functions";
 import { useCart } from "@/features/cart/cart-context";
+import { checkSubscription, type SubscriptionCheck } from "@/features/subscriptions/api";
+import { CLIENT } from "@/config/client";
 import { formatDay, formatPrice, todayISO } from "@core/lib/format";
 
 const customerSchema = z.object({
@@ -63,6 +65,32 @@ export function CheckoutPage() {
     [items, today],
   );
 
+  // Abonnés : téléphone + code → un plat par jour ouvré pris en charge (le moins cher du jour,
+  // comme côté serveur). Le reste se paie normalement.
+  const [subPin, setSubPin] = useState("");
+  const [subCheck, setSubCheck] = useState<SubscriptionCheck | null>(null);
+  const platPriceByDay = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach((item) => {
+      if (item.source !== "menu" || item.category !== "plat" || !item.day_date) return;
+      const current = map.get(item.day_date);
+      if (current === undefined || item.price < current) map.set(item.day_date, item.price);
+    });
+    return map;
+  }, [items]);
+  const platDaysKey = [...platPriceByDay.keys()].sort().join(",");
+  useEffect(() => setSubCheck(null), [form.phone, platDaysKey]);
+  const verifySub = useMutation({
+    mutationFn: () =>
+      checkSubscription(form.phone, subPin, platDaysKey ? platDaysKey.split(",") : []),
+    onSuccess: setSubCheck,
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const coveredDays = subCheck?.ok ? subCheck.days.filter((d) => d.covered).map((d) => d.date) : [];
+  const discount = coveredDays.reduce((sum, day) => sum + (platPriceByDay.get(day) ?? 0), 0);
+  const payable = total - discount;
+  const deposit = isPreorder && payable > 0 ? Math.min(DEPOSIT_AMOUNT, payable) : 0;
+
   // Plats regroupés par jour du menu, puis les jus du catalogue (clé `null`) en dernier.
   const grouped = useMemo(() => {
     const map = new Map<string | null, typeof items>();
@@ -104,6 +132,21 @@ export function CheckoutPage() {
         /* ignore expired data */
       }
       const result = pending?.fingerprint === fingerprint ? null : await placeOrder(payload);
+      if (result && result.total === 0) {
+        // Entièrement pris en charge par l'abonnement : pas de paiement.
+        window.sessionStorage.setItem(
+          "traiteur.last_order",
+          JSON.stringify({
+            reference: result.reference,
+            total: 0,
+            customer: form,
+            items: items.map((i) => ({ ...i })),
+            subscription: result.subscription,
+          }),
+        );
+        clear();
+        return "/confirmation";
+      }
       const orderId = result?.order_id ?? pending?.orderId;
       if (!orderId) throw new Error("Commande introuvable. Réessayez.");
       if (result)
@@ -132,13 +175,15 @@ export function CheckoutPage() {
           (isPreorder ? DEPOSIT_AMOUNT : 0),
         customer: form,
         items: items.map((i) => ({ ...i })),
+        subscription: result?.subscription ?? null,
       };
       window.sessionStorage.setItem("traiteur.last_order", JSON.stringify(payload2));
       clear();
       return url;
     },
     onSuccess: (url) => {
-      window.location.href = url;
+      if (url === "/confirmation") void navigate({ to: "/confirmation" });
+      else window.location.href = url;
     },
     onError: (error: Error) => {
       if (isCancelledError(error)) return;
@@ -166,8 +211,15 @@ export function CheckoutPage() {
       toast.error("Certains produits ne sont plus disponibles, mettez le panier à jour.");
       return;
     }
+    if (subCheck && !subCheck.ok) {
+      toast.error("Code abonné incorrect : corrigez-le ou retirez-le.");
+      return;
+    }
     mutation.mutate({
-      customer: parsed.data,
+      customer: {
+        ...parsed.data,
+        ...(subCheck?.ok && coveredDays.length > 0 ? { subscription_pin: subPin } : {}),
+      },
       items: items.map((i) =>
         i.source === "jus"
           ? { variant_id: i.id, quantity: i.quantity }
@@ -305,6 +357,81 @@ export function CheckoutPage() {
                   />
                 </div>
               </section>
+
+              {CLIENT.subscriptions && (
+                <section className="surface-card space-y-3 p-4">
+                  <h2 className="flex items-center gap-2 font-display text-lg font-bold text-primary">
+                    <KeyRound className="size-5" /> Vous êtes abonné ?
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Entrez votre code abonné (avec le téléphone ci-dessus) : un plat par jour, du
+                    lundi au vendredi, est compté sur votre abonnement.
+                  </p>
+                  <form
+                    className="flex flex-wrap gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (/^\d{4}$/.test(subPin) && form.phone.replace(/\D/g, "").length >= 7)
+                        verifySub.mutate();
+                    }}
+                  >
+                    <Input
+                      className="w-36"
+                      placeholder="Code à 4 chiffres"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={subPin}
+                      onChange={(e) => {
+                        setSubPin(e.target.value.replace(/\D/g, ""));
+                        setSubCheck(null);
+                      }}
+                    />
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      disabled={
+                        !/^\d{4}$/.test(subPin) ||
+                        form.phone.replace(/\D/g, "").length < 7 ||
+                        verifySub.isPending
+                      }
+                    >
+                      {verifySub.isPending ? "Vérification…" : "Utiliser mon abonnement"}
+                    </Button>
+                  </form>
+                  {form.phone.replace(/\D/g, "").length < 7 && subPin.length === 4 && (
+                    <p className="text-xs text-muted-foreground">
+                      Indiquez d'abord votre téléphone dans les informations de livraison.
+                    </p>
+                  )}
+                  {subCheck && !subCheck.ok && (
+                    <p className="text-sm text-destructive">{subCheck.error}</p>
+                  )}
+                  {subCheck?.ok && (
+                    <div className="space-y-2 rounded-lg bg-success/10 p-3 text-sm">
+                      <p className="font-semibold">
+                        {subCheck.customer_name} · {subCheck.plan_name} · {subCheck.remaining} repas
+                        restant{subCheck.remaining > 1 ? "s" : ""}
+                      </p>
+                      {subCheck.days.length === 0 && (
+                        <p>Ajoutez un plat du jour au panier pour utiliser votre abonnement.</p>
+                      )}
+                      <ul className="space-y-1">
+                        {subCheck.days.map((d) => (
+                          <li key={d.date}>
+                            {d.covered ? "✅" : "⛔"} {formatDay(d.date)} :{" "}
+                            {d.covered ? "1 plat compté sur l'abonnement" : d.reason}
+                          </li>
+                        ))}
+                      </ul>
+                      {coveredDays.length > 0 && (
+                        <p className="text-muted-foreground">
+                          Après cette commande, il vous restera {subCheck.remaining_after} repas.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
 
             <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -320,24 +447,36 @@ export function CheckoutPage() {
                     </li>
                   ))}
                 </ul>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Abonnement ({coveredDays.length} repas)</span>
+                    <span className="font-medium">− {formatPrice(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-border pt-3 text-lg font-bold">
                   <span>Total</span>
-                  <span>{formatPrice(total)}</span>
+                  <span>{formatPrice(payable)}</span>
                 </div>
 
-                <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                  <p className="font-semibold text-primary">
-                    {isPreorder
-                      ? `À payer maintenant : acompte de ${formatPrice(DEPOSIT_AMOUNT)}`
-                      : `À payer maintenant : ${formatPrice(total)}`}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
-                    bancaire.
-                    {isPreorder &&
-                      " L'acompte de 1 500 FCFA n'est pas remboursable ; le reste est réglé à la livraison."}
-                  </p>
-                </div>
+                {payable === 0 ? (
+                  <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
+                    Rien à payer : votre commande est entièrement comptée sur votre abonnement.
+                  </div>
+                ) : (
+                  <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    <p className="font-semibold text-primary">
+                      {deposit > 0
+                        ? `À payer maintenant : acompte de ${formatPrice(deposit)}`
+                        : `À payer maintenant : ${formatPrice(payable)}`}
+                    </p>
+                    <p className="text-muted-foreground">
+                      Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
+                      bancaire.
+                      {deposit > 0 &&
+                        ` L'acompte de ${formatPrice(deposit)} n'est pas remboursable ; le reste est réglé à la livraison.`}
+                    </p>
+                  </div>
+                )}
 
                 <div className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
                   <strong>Important :</strong> toute commande validée est non remboursable.
@@ -361,7 +500,13 @@ export function CheckoutPage() {
                   disabled={!accepted || mutation.isPending}
                   onClick={submit}
                 >
-                  {mutation.isPending ? "Redirection vers le paiement…" : "Payer avec PayDunya"}
+                  {mutation.isPending
+                    ? payable === 0
+                      ? "Validation…"
+                      : "Redirection vers le paiement…"
+                    : payable === 0
+                      ? "Valider ma commande"
+                      : "Payer avec PayDunya"}
                 </Button>
               </div>
             </aside>

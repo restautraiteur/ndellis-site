@@ -7,6 +7,8 @@ import {
   Check,
   ChefHat,
   ChevronDown,
+  CreditCard,
+  KeyRound,
   PhoneCall,
   Search,
   Sparkles,
@@ -14,6 +16,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { SiteFooter, SiteHeader } from "@/components/site-header";
 import { CLIENT } from "@/config/client";
 import {
@@ -22,8 +25,11 @@ import {
   plansQuery,
   subscriptionDatesQuery,
   type MySubscription,
+  type PaymentChoice,
+  type PaymentMode,
   type SubscriptionPlan,
 } from "@/features/subscriptions/api";
+import { checkPayment, startSubscriptionPayment } from "@/features/payment/paydunya.functions";
 import fonioCrevettes from "@/assets/fonio-crevettes.jpg";
 import platPoisson from "@/assets/plat-senegalais-2.jpg";
 import platPoulet from "@/assets/plat-senegalais-5.jpg";
@@ -70,6 +76,28 @@ function perMeal(plan: SubscriptionPlan) {
 
 type Created = Awaited<ReturnType<typeof createSubscription>>;
 
+/** Dernier abonnement créé sur cet appareil : réaffiché (avec le code) au retour du paiement en ligne. */
+const LAST_KEY = "traiteur.last_subscription";
+function saveLast(created: Created) {
+  try {
+    window.sessionStorage.setItem(LAST_KEY, JSON.stringify(created));
+  } catch {
+    /* navigation privée */
+  }
+}
+function loadLast(): Created | null {
+  try {
+    const raw = window.sessionStorage.getItem(LAST_KEY);
+    return raw ? (JSON.parse(raw) as Created) : null;
+  } catch {
+    return null;
+  }
+}
+
+function halfPrice(price: number) {
+  return Math.ceil(price / 2);
+}
+
 /** Abonnement repas : formules, calendrier, réservation et suivi par téléphone. */
 export function SubscriptionPage() {
   return (
@@ -90,7 +118,7 @@ export function SubscriptionPage() {
 const PERKS = [
   { icon: ChefHat, label: "Cuisiné le jour même" },
   { icon: Truck, label: "Livraison incluse" },
-  { icon: PhoneCall, label: "Réglé par téléphone" },
+  { icon: CreditCard, label: "Payé en une ou deux fois" },
 ];
 
 function Hero() {
@@ -109,8 +137,9 @@ function Hero() {
             Votre déjeuner de la semaine, <span className="text-accent">réglé d'avance.</span>
           </h1>
           <p className="mt-5 max-w-lg text-base text-sidebar-foreground/75">
-            Choisissez un nombre de repas et un jour de départ. Chaque jour ouvré, le plat du jour
-            de {CLIENT.name} est mis de côté pour vous et livré, sans rien recommander.
+            Achetez vos repas d'avance. Chaque midi de la semaine, choisissez votre plat chez{" "}
+            {CLIENT.name} avec votre numéro et votre code abonné : il est compté sur votre
+            abonnement, rien à payer.
           </p>
           <ul className="mt-7 flex flex-wrap gap-2 text-sm">
             {PERKS.map(({ icon: Icon, label }) => (
@@ -175,17 +204,22 @@ const STEPS = [
   {
     icon: UtensilsCrossed,
     title: "Choisissez votre formule",
-    text: "De quelques jours à un mois complet, selon votre rythme.",
+    text: "De quelques jours à un mois complet, selon votre rythme, et votre jour de départ.",
   },
   {
-    icon: CalendarDays,
-    title: "Fixez le jour de départ",
-    text: "Le calendrier montre aussitôt vos jours de repas. Les jours de fermeture sont reportés.",
+    icon: CreditCard,
+    title: "Réglez comme vous voulez",
+    text: "En entier ou la moitié d'abord, en ligne ou quand nous vous appelons.",
   },
   {
-    icon: PhoneCall,
-    title: "On vous appelle",
-    text: "Nous confirmons avec vous et vous réglez à ce moment-là. Ensuite, il n'y a plus qu'à manger.",
+    icon: KeyRound,
+    title: "Recevez votre code",
+    text: "Un code à 4 chiffres, rien qu'à vous : avec votre numéro, il vous fait reconnaître.",
+  },
+  {
+    icon: ChefHat,
+    title: "Commandez chaque midi",
+    text: "Choisissez le plat du jour qui vous tente, entrez votre code : rien à payer. Un jour sauté est reporté.",
   },
 ];
 
@@ -193,7 +227,7 @@ function HowItWorks() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16">
       <h2 className="text-center font-display text-3xl font-bold">Comment ça marche</h2>
-      <ol className="mt-10 grid gap-6 md:grid-cols-3">
+      <ol className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map((step, i) => (
           <li key={step.title} className="relative rounded-3xl border border-border bg-card p-6">
             <span className="absolute right-5 top-4 font-display text-5xl font-bold text-accent/15">
@@ -231,7 +265,30 @@ function Builder() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>("total");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("en_ligne");
   const [done, setDone] = useState<Created | null>(null);
+  const [payStatus, setPayStatus] = useState<string | null>(null);
+  const payOnline = useServerFn(startSubscriptionPayment);
+  const check = useServerFn(checkPayment);
+
+  // Retour de PayDunya : on réaffiche l'abonnement créé (et son code) avec l'état du paiement.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const cancelled = params.get("paiement") === "annule";
+    if (!token && !cancelled) return;
+    const last = loadLast();
+    if (last) setDone(last);
+    if (cancelled) {
+      setPayStatus("cancelled");
+      return;
+    }
+    setPayStatus("checking");
+    check({ data: { token: token! } })
+      .then((r) => setPayStatus(r.status))
+      .catch(() => setPayStatus("unknown"));
+  }, [check]);
 
   useEffect(() => {
     if (!planId && plans[0]) setPlanId(plans[0].id);
@@ -258,24 +315,44 @@ function Builder() {
         name: name.trim(),
         phone,
         address: address.trim(),
+        paymentChoice,
+        paymentMode,
       }),
-    onSuccess: (result) => setDone(result),
+    onSuccess: async (result) => {
+      saveLast(result);
+      if (result.payment_mode === "en_ligne") {
+        try {
+          const { url } = await payOnline({ data: { subscriptionId: result.id, pin: result.pin } });
+          if (url.startsWith("https://app.paydunya.com/")) {
+            window.location.href = url;
+            return;
+          }
+        } catch (error) {
+          toast.error((error as Error).message);
+        }
+        setPayStatus("failed");
+      }
+      setDone(result);
+    },
     onError: (error: Error) => toast.error(error.message),
   });
+  const dueNow = plan ? (paymentChoice === "moitie" ? halfPrice(plan.price) : plan.price) : 0;
 
   return (
     <section id="formules" className="scroll-mt-24 bg-cream py-16">
       <div className="mx-auto max-w-6xl px-4">
         <p className="text-xs font-bold uppercase tracking-widest text-accent">Votre abonnement</p>
         <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
-          Composez-le en trois étapes
+          Composez-le en quatre étapes
         </h2>
 
         {done ? (
           <Confirmation
             result={done}
+            payStatus={payStatus}
             onAgain={() => {
               setDone(null);
+              setPayStatus(null);
               setName("");
               setPhone("");
               setAddress("");
@@ -333,7 +410,8 @@ function Builder() {
               <div>
                 <StepTitle n={2}>À partir de quand ?</StepTitle>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Touchez un jour pour démarrer : vos jours de repas s'allument dans le calendrier.
+                  Touchez un jour pour démarrer. Le calendrier montre vos repas si vous mangez
+                  chaque jour ouvré ; un jour sans commande est simplement reporté.
                 </p>
                 <MealCalendar
                   startOptions={startOptions}
@@ -370,6 +448,42 @@ function Builder() {
                   />
                 </div>
               </div>
+
+              <div>
+                <StepTitle n={4}>Le règlement</StepTitle>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Choice
+                    selected={paymentChoice === "total"}
+                    onClick={() => setPaymentChoice("total")}
+                    title="En une fois"
+                    text={plan ? formatPrice(plan.price) : ""}
+                  />
+                  <Choice
+                    selected={paymentChoice === "moitie"}
+                    onClick={() => setPaymentChoice("moitie")}
+                    title="La moitié maintenant"
+                    text={
+                      plan
+                        ? `${formatPrice(halfPrice(plan.price))}, le reste avant votre dernier repas`
+                        : ""
+                    }
+                  />
+                  <Choice
+                    selected={paymentMode === "en_ligne"}
+                    onClick={() => setPaymentMode("en_ligne")}
+                    icon={CreditCard}
+                    title="Payer en ligne"
+                    text="Wave, Orange Money, Free Money ou carte. Abonnement confirmé tout de suite."
+                  />
+                  <Choice
+                    selected={paymentMode === "telephone"}
+                    onClick={() => setPaymentMode("telephone")}
+                    icon={PhoneCall}
+                    title="Être appelé"
+                    text={`${CLIENT.name} vous appelle pour confirmer et encaisser.`}
+                  />
+                </div>
+              </div>
             </div>
 
             <aside className="lg:sticky lg:top-28 lg:self-start">
@@ -388,6 +502,9 @@ function Builder() {
                       </Row>
                       <Row label="Livraison">{plan.delivery_included ? "Incluse" : "En sus"}</Row>
                       <Row label="Prix par repas">{formatPrice(perMeal(plan))}</Row>
+                      <Row label="Règlement">
+                        {paymentChoice === "moitie" ? "En deux fois" : "En une fois"}
+                      </Row>
                     </dl>
                     <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-sidebar-foreground/15 pt-4">
                       <span className="text-sm">Total</span>
@@ -395,6 +512,14 @@ function Builder() {
                         {formatPrice(plan.price)}
                       </span>
                     </div>
+                    {paymentChoice === "moitie" && (
+                      <div className="mt-1 flex justify-between gap-3 text-sm text-sidebar-foreground/70">
+                        <span>{paymentMode === "en_ligne" ? "Maintenant" : "À l'appel"}</span>
+                        <span className="font-semibold text-sidebar-foreground">
+                          {formatPrice(dueNow)}
+                        </span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="mt-3 text-sm text-sidebar-foreground/70">Choisissez une formule.</p>
@@ -406,12 +531,18 @@ function Builder() {
                   className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   <CalendarCheck className="size-4" />
-                  {subscribe.isPending ? "Réservation…" : "Réserver mes repas"}
+                  {subscribe.isPending
+                    ? "Un instant…"
+                    : paymentMode === "en_ligne" && plan
+                      ? `Payer ${formatPrice(dueNow)}`
+                      : "Réserver mes repas"}
                 </button>
                 <p className="mt-3 text-center text-xs text-sidebar-foreground/60">
-                  {valid
-                    ? "Rien à payer maintenant : nous vous appelons pour confirmer."
-                    : "Indiquez votre nom et votre téléphone pour réserver."}
+                  {!valid
+                    ? "Indiquez votre nom et votre téléphone pour réserver."
+                    : paymentMode === "en_ligne"
+                      ? "Paiement sécurisé par PayDunya. Votre code abonné s'affiche au retour."
+                      : "Rien à payer maintenant : nous vous appelons pour confirmer."}
                 </p>
               </div>
             </aside>
@@ -419,6 +550,47 @@ function Builder() {
         )}
       </div>
     </section>
+  );
+}
+
+function Choice({
+  selected,
+  onClick,
+  title,
+  text,
+  icon: Icon,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  text: string;
+  icon?: typeof CreditCard;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "flex items-start gap-3 rounded-2xl border-2 bg-card p-4 text-left transition-colors",
+        selected ? "border-accent" : "border-transparent hover:border-accent/40",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2",
+          selected ? "border-accent bg-accent text-accent-foreground" : "border-border",
+        )}
+      >
+        {selected && <Check className="size-3" />}
+      </span>
+      <span>
+        <span className="flex items-center gap-1.5 font-semibold">
+          {Icon && <Icon className="size-4 text-accent" />} {title}
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">{text}</span>
+      </span>
+    </button>
   );
 }
 
@@ -508,7 +680,7 @@ function MealCalendar({
         ))}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <Legend className="bg-accent" label="Jour de repas" />
+        <Legend className="bg-accent" label="Repas (si vous mangez chaque jour)" />
         <Legend className="ring-2 ring-primary" label="Départ" />
         <Legend className="bg-muted" label="Fermé, reporté" />
         {end && (
@@ -529,34 +701,79 @@ function Legend({ className, label }: { className: string; label: string }) {
   );
 }
 
-function Confirmation({ result, onAgain }: { result: Created; onAgain: () => void }) {
+function Confirmation({
+  result,
+  payStatus,
+  onAgain,
+}: {
+  result: Created;
+  payStatus: string | null;
+  onAgain: () => void;
+}) {
+  const online = result.payment_mode === "en_ligne";
+  const paid = payStatus === "completed";
+  const payFailed =
+    online && !!payStatus && !["completed", "checking", "pending"].includes(payStatus);
   return (
     <div className="mt-10 rounded-3xl bg-card p-8 text-center shadow-warm sm:p-12">
       <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-success/15 text-success">
         <Check className="size-8" />
       </span>
-      <h3 className="mt-5 font-display text-3xl font-bold">C'est réservé, merci !</h3>
+      <h3 className="mt-5 font-display text-3xl font-bold">
+        {paid ? "Paiement reçu, bienvenue !" : "C'est réservé, merci !"}
+      </h3>
       <p className="mx-auto mt-3 max-w-lg text-muted-foreground">
-        {result.plan_name} · {formatPrice(result.price)}, du {formatDay(result.start_date)} au{" "}
-        {formatDay(result.end_date).toLowerCase()}. {CLIENT.name} vous appelle très vite pour
-        confirmer et régler.
+        {result.plan_name} · {result.meals_count} repas · {formatPrice(result.price)}, à partir du{" "}
+        {formatDay(result.start_date).toLowerCase()}.
       </p>
-      <div className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-1.5">
-        {result.dates.map((d) => (
-          <span
-            key={d}
-            className="rounded-lg bg-accent/15 px-2 py-1 text-xs font-semibold text-accent"
-          >
-            {shortDay(d)}
-          </span>
-        ))}
+
+      {online && payStatus && (
+        <p
+          className={cn(
+            "mx-auto mt-4 max-w-lg rounded-2xl px-4 py-3 text-sm font-medium",
+            paid
+              ? "bg-success/10 text-success"
+              : payFailed
+                ? "bg-amber-100 text-amber-900"
+                : "bg-muted",
+          )}
+        >
+          {payStatus === "checking"
+            ? "Vérification du paiement…"
+            : paid
+              ? `Paiement de ${formatPrice(result.amount_due)} confirmé : votre abonnement est actif.`
+              : payStatus === "pending"
+                ? "Paiement en attente de confirmation. Votre abonnement s'activera dès sa réception."
+                : `Le paiement n'a pas abouti. Vous pourrez réessayer dans « Suivez vos repas », ou ${CLIENT.name} vous appellera.`}
+        </p>
+      )}
+      {!online && (
+        <p className="mx-auto mt-4 max-w-lg text-sm text-muted-foreground">
+          {CLIENT.name} vous appelle très vite pour confirmer et encaisser{" "}
+          {result.payment_choice === "moitie"
+            ? `la première moitié (${formatPrice(result.amount_due)})`
+            : formatPrice(result.amount_due)}
+          . Vos repas seront utilisables dès la confirmation.
+        </p>
+      )}
+
+      <div className="mx-auto mt-8 max-w-sm rounded-3xl border-2 border-dashed border-accent/50 bg-accent/5 p-6">
+        <p className="flex items-center justify-center gap-2 text-sm font-semibold text-accent">
+          <KeyRound className="size-4" /> Votre code abonné
+        </p>
+        <p className="mt-2 font-display text-5xl font-bold tracking-[0.3em]">{result.pin}</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Notez-le bien. Chaque midi, choisissez votre plat, puis entrez votre numéro et ce code au
+          moment de valider : le repas est compté sur votre abonnement.
+        </p>
       </div>
+
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <a
-          href="#suivi"
+          href="/#menu"
           className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
         >
-          Suivre mes repas
+          Voir le menu de la semaine
         </a>
         <button
           type="button"
@@ -587,8 +804,8 @@ function Tracking() {
         <p className="text-xs font-bold uppercase tracking-widest text-accent">Déjà abonné ?</p>
         <h2 className="mt-2 font-display text-3xl font-bold">Suivez vos repas</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Entrez le numéro donné à la réservation pour voir vos repas restants et votre prochain
-          jour de livraison.
+          Entrez votre numéro pour voir combien de repas il vous reste, ceux déjà livrés et ce qu'il
+          reste à régler.
         </p>
       </div>
       <form
@@ -632,12 +849,13 @@ function Tracking() {
 }
 
 function SubscriptionCard({ sub, today }: { sub: MySubscription; today: string }) {
-  const active = sub.meals.filter((m) => m.status !== "annule");
-  const taken = active.filter((m) => m.status === "pris").length;
-  const remaining = active.filter((m) => m.status === "prevu" && m.date >= today).length;
-  const next = active.find((m) => m.status === "prevu" && m.date >= today);
-  const progress = active.length ? Math.round((taken / active.length) * 100) : 0;
-  const cancelled = sub.status === "annulee";
+  const delivered = sub.meals.filter((m) => m.status === "pris").length;
+  const ordered = sub.meals.length - delivered;
+  const used = sub.meals.length;
+  const progress = Math.round((used / sub.meals_count) * 100);
+  const balance = Math.max(sub.price - sub.amount_paid, 0);
+  const next = sub.meals.find((m) => m.status === "prevu" && m.date >= today);
+  const pending = sub.status === "en_attente";
 
   return (
     <article className="rounded-3xl border border-border bg-card p-6">
@@ -645,94 +863,166 @@ function SubscriptionCard({ sub, today }: { sub: MySubscription; today: string }
         <div>
           <p className="font-display text-xl font-bold">{sub.plan_name}</p>
           <p className="text-sm text-muted-foreground">
-            {sub.customer_name} · {shortDay(sub.start_date)} → {shortDay(sub.end_date)}
+            {sub.customer_name} · depuis le {shortDay(sub.start_date)}
           </p>
         </div>
         <span
           className={cn(
             "rounded-full px-3 py-1 text-xs font-semibold",
-            cancelled
-              ? "bg-muted text-muted-foreground"
-              : sub.payment_status === "paye"
+            pending
+              ? "bg-amber-100 text-amber-800"
+              : balance === 0
                 ? "bg-success/15 text-success"
-                : "bg-amber-100 text-amber-800",
+                : "bg-accent/15 text-accent",
           )}
         >
-          {cancelled
-            ? "Annulé"
-            : sub.payment_status === "paye"
-              ? "Réglé"
-              : "En attente de notre appel"}
+          {pending ? "En attente de confirmation" : balance === 0 ? "Réglé" : "Acompte versé"}
         </span>
       </div>
 
-      <div className="mt-5">
-        <div className="flex justify-between text-sm">
-          <span>
-            <strong>{taken}</strong> repas servi{taken > 1 ? "s" : ""} sur {active.length}
-          </span>
-          <span className="text-muted-foreground">
-            {remaining} restant{remaining > 1 ? "s" : ""}
-          </span>
+      <div className="mt-6 flex items-end justify-between gap-4">
+        <div>
+          <p className="font-display text-5xl font-bold leading-none">{sub.remaining}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            repas restant{sub.remaining > 1 ? "s" : ""} sur {sub.meals_count}
+          </p>
         </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} />
-        </div>
+        <p className="text-right text-sm text-muted-foreground">
+          {delivered} livré{delivered > 1 ? "s" : ""}
+          {ordered > 0 ? ` · ${ordered} commandé${ordered > 1 ? "s" : ""}` : ""}
+          {sub.remaining > 0 && sub.end_date && (
+            <>
+              <br />
+              Fin estimée : {shortDay(sub.end_date)}
+            </>
+          )}
+        </p>
+      </div>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} />
       </div>
 
-      {next ? (
+      {next && (
         <p className="mt-4 rounded-2xl bg-accent/10 px-4 py-3 text-sm">
           Prochain repas : <strong>{formatDay(next.date)}</strong>
+          {next.dish ? ` · ${next.dish}` : ""}
         </p>
-      ) : (
-        !cancelled && (
-          <p className="mt-4 rounded-2xl bg-success/10 px-4 py-3 text-sm">
-            Tous vos repas ont été servis. Envie de continuer ?{" "}
-            <a href="#formules" className="font-semibold underline">
-              Réabonnez-vous
-            </a>
-          </p>
-        )
+      )}
+      {sub.remaining === 0 && (
+        <p className="mt-4 rounded-2xl bg-success/10 px-4 py-3 text-sm">
+          Tous vos repas ont été utilisés. Envie de continuer ?{" "}
+          <a href="#formules" className="font-semibold underline">
+            Réabonnez-vous
+          </a>
+        </p>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {sub.meals.map((m) => (
-          <span
-            key={m.date}
-            title={formatDay(m.date)}
-            className={cn(
-              "rounded-lg px-2 py-1 text-xs font-semibold",
-              m.status === "pris" && "bg-success/15 text-success",
-              m.status === "annule" && "bg-muted text-muted-foreground line-through",
-              m.status === "prevu" &&
-                (m.date < today ? "bg-muted text-muted-foreground" : "bg-accent/15 text-accent"),
-            )}
-          >
-            {shortDay(m.date)}
-          </span>
-        ))}
-      </div>
+      {balance > 0 && sub.status !== "annulee" && <BalanceBox sub={sub} balance={balance} />}
+
+      {sub.meals.length > 0 && (
+        <ul className="mt-5 divide-y divide-border text-sm">
+          {[...sub.meals].reverse().map((m) => (
+            <li key={m.date} className="flex items-center justify-between gap-3 py-2">
+              <span>
+                <span className="font-medium">{formatDay(m.date)}</span>
+                {m.dish && <span className="text-muted-foreground"> · {m.dish}</span>}
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                  m.status === "pris" ? "bg-success/15 text-success" : "bg-accent/15 text-accent",
+                )}
+              >
+                {m.status === "pris" ? "Livré" : "Commandé"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </article>
+  );
+}
+
+/** Reste à payer, avec paiement en ligne (le code abonné est demandé). */
+function BalanceBox({ sub, balance }: { sub: MySubscription; balance: number }) {
+  const [pin, setPin] = useState("");
+  const pay = useServerFn(startSubscriptionPayment);
+  const mutation = useMutation({
+    mutationFn: () => pay({ data: { subscriptionId: sub.id, pin } }),
+    onSuccess: ({ url }) => {
+      if (url.startsWith("https://app.paydunya.com/")) window.location.href = url;
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const firstPayment = sub.amount_paid === 0;
+  return (
+    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+      <p>
+        {firstPayment ? (
+          <>
+            Abonnement pas encore réglé (<strong>{formatPrice(sub.price)}</strong>).
+          </>
+        ) : (
+          <>
+            Reste à régler : <strong>{formatPrice(balance)}</strong>
+            {sub.remaining <= 3 && sub.remaining > 0
+              ? " — à payer avant votre dernier repas, sinon il restera bloqué."
+              : ", avant votre dernier repas."}
+          </>
+        )}
+      </p>
+      <form
+        className="mt-3 flex flex-wrap gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (/^\d{4}$/.test(pin)) mutation.mutate();
+        }}
+      >
+        <Input
+          className="h-10 w-36 bg-white"
+          placeholder="Code abonné"
+          inputMode="numeric"
+          maxLength={4}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+        />
+        <button
+          type="submit"
+          disabled={!/^\d{4}$/.test(pin) || mutation.isPending}
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          <CreditCard className="size-4" /> Payer en ligne
+        </button>
+      </form>
+    </div>
   );
 }
 
 function Faq() {
   const items = [
     [
-      "Que se passe-t-il si vous êtes fermés un jour ?",
-      "Le repas n'est pas perdu : il est reporté au jour ouvré suivant, et la fin de l'abonnement recule d'autant.",
+      "Comment j'utilise mes repas ?",
+      "Commandez sur le site comme d'habitude : choisissez le plat du jour qui vous tente, puis entrez votre numéro et votre code abonné au moment de valider. Le repas est compté sur votre abonnement, rien à payer.",
     ],
     [
-      "Comment se passe le paiement ?",
-      `Rien n'est payé sur le site. Après votre réservation, ${CLIENT.name} vous appelle pour confirmer et convenir du règlement.`,
+      "Et si je ne commande pas un jour ?",
+      "Le repas n'est pas perdu : il reste sur votre abonnement et la fin recule d'autant. Les jours de fermeture du restaurant aussi sont reportés.",
     ],
     [
-      "Quel plat vais-je recevoir ?",
-      "Le plat du jour, cuisiné le matin même. Le menu change d'un jour à l'autre.",
+      "Combien de repas par jour ?",
+      "Un repas par jour ouvré, du lundi au vendredi. Un deuxième plat, des jus ou une commande le week-end se paient normalement.",
+    ],
+    [
+      "Puis-je payer en deux fois ?",
+      "Oui : la moitié à la souscription, le reste avant votre dernier repas (en ligne depuis « Suivez vos repas », ou quand nous vous appelons). Tant que le solde n'est pas réglé, le dernier repas reste bloqué.",
+    ],
+    [
+      "J'ai oublié mon code abonné.",
+      `Contactez ${CLIENT.name} : nous vous redonnerons votre code après avoir vérifié votre numéro.`,
     ],
     [
       "Puis-je abonner un collègue ou un proche ?",
-      "Oui : faites une nouvelle réservation à son nom, avec son numéro de téléphone.",
+      "Oui : faites une nouvelle réservation à son nom, avec son numéro. Il recevra son propre code.",
     ],
   ] as const;
   return (

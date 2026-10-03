@@ -7,6 +7,6 @@ export const CLIENT = {
   name: "Ndelli's Traiteur",
   /** Numéro WhatsApp au format international, sans « + » ni espaces. */
   whatsapp: "221781867272",
-  /** Abonnements (« Mangez ici toute la semaine ») activés sur le site. */
+  /** Abonnements repas activés sur le site. */
   subscriptions: true,
 } as const;

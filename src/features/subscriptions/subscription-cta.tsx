@@ -20,17 +20,17 @@ export function SubscriptionCta() {
         <div className="relative">
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Abonnement</p>
           <h2 className="mt-2 font-display text-2xl font-bold sm:text-3xl">
-            Mangez ici toute la semaine
+            Votre déjeuner de la semaine, réglé d'avance
           </h2>
           <p className="mt-1 text-sm text-sidebar-foreground/80">
-            Réservez vos repas d'avance, livraison incluse. Formules dès {formatPrice(cheapest)}.
+            Le plat du jour mis de côté et livré chaque midi. À partir de {formatPrice(cheapest)}.
           </p>
         </div>
         <Link
           to="/abonnement"
           className="relative inline-flex h-12 items-center gap-2 rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground transition-transform hover:scale-105"
         >
-          <CalendarCheck className="size-4" /> Voir les formules
+          <CalendarCheck className="size-4" /> Découvrir l'abonnement
         </Link>
       </div>
     </section>

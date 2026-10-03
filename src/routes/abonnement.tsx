@@ -5,13 +5,13 @@ import { SubscriptionPage } from "@/features/subscriptions/subscription-page";
 export const Route = createFileRoute("/abonnement")({
   head: () => ({
     meta: [
-      { title: "Abonnement — Mangez ici toute la semaine" },
+      { title: "Abonnement repas — votre déjeuner réglé d'avance" },
       {
         name: "description",
         content:
-          "Réservez vos repas d'avance avec une formule d'abonnement : choisissez votre formule et votre date de début.",
+          "Abonnez-vous au plat du jour : choisissez un nombre de repas et un jour de départ, le déjeuner est livré chaque midi du lundi au vendredi.",
       },
-      { property: "og:title", content: "Abonnement — Mangez ici toute la semaine" },
+      { property: "og:title", content: "Abonnement repas — votre déjeuner réglé d'avance" },
       { property: "og:type", content: "website" },
     ],
   }),

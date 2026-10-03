@@ -237,6 +237,16 @@ export function SiteFooter() {
       <div className="relative border-t border-sidebar-foreground/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-sidebar-foreground/60 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} Le Ndelli's NDS Traiteur. Tous droits réservés.</p>
+          <p>
+            Site réalisé par{" "}
+            <a href="mailto:aishaseye074@gmail.com" className="hover:text-sidebar-foreground">
+              aishaseye074@gmail.com
+            </a>{" "}
+            ·{" "}
+            <a href="tel:+221704072668" className="hover:text-sidebar-foreground">
+              70 407 26 68
+            </a>
+          </p>
         </div>
       </div>
     </footer>

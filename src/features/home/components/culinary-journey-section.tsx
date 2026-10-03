@@ -15,7 +15,18 @@ const CUISINES = [
 export function CulinaryJourneySection() {
   // La vidéo (1 Mo) n'est téléchargée que lorsque la section approche de l'écran.
   const videoBoxRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [showVideo, setShowVideo] = useState(false);
+
+  // iPhone : la lecture automatique exige une vidéo muette ; React ne pose pas l'attribut « muted »,
+  // on le force puis on lance la lecture (l'affiche reste visible si le téléphone la refuse).
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!showVideo || !video) return;
+    video.muted = true;
+    video.defaultMuted = true;
+    video.play().catch(() => undefined);
+  }, [showVideo]);
 
   useEffect(() => {
     const box = videoBoxRef.current;
@@ -72,7 +83,10 @@ export function CulinaryJourneySection() {
             ))}
           </div>
         </div>
-        <div ref={videoBoxRef} className="relative mx-auto w-full max-w-md">
+        <div
+          ref={videoBoxRef}
+          className="relative mx-auto w-full max-w-[17rem] sm:max-w-sm md:max-w-md"
+        >
           <div className="absolute -inset-3 rounded-3xl border border-accent/30" />
           {/* crevette dessinée posée sur le bord droit de la vidéo */}
           <img
@@ -80,11 +94,12 @@ export function CulinaryJourneySection() {
             alt=""
             aria-hidden="true"
             loading="lazy"
-            className="deco-float pointer-events-none absolute -right-14 bottom-16 z-10 w-36 select-none drop-shadow-[0_14px_22px_rgba(0,0,0,0.45)] sm:-right-20 sm:w-48"
+            className="deco-float pointer-events-none absolute -right-12 bottom-10 z-10 w-28 select-none drop-shadow-[0_14px_22px_rgba(0,0,0,0.45)] sm:-right-20 sm:bottom-16 sm:w-48"
             style={{ "--deco-rotate": "-14deg" } as CSSProperties}
           />
           {showVideo ? (
             <video
+              ref={videoRef}
               poster={cuisinePoster}
               autoPlay
               muted
@@ -94,8 +109,9 @@ export function CulinaryJourneySection() {
               aria-label="La cheffe Ndellis Signé en pleine préparation en cuisine"
               className="relative aspect-[9/16] w-full rounded-2xl object-cover shadow-warm"
             >
-              <source src={cuisineVideoWebm} type="video/webm" />
+              {/* MP4 d'abord : lu partout, y compris sur iPhone (le WebM y est mal pris en charge). */}
               <source src={cuisineVideo} type="video/mp4" />
+              <source src={cuisineVideoWebm} type="video/webm" />
             </video>
           ) : (
             <img

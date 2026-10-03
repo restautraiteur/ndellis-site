@@ -73,9 +73,12 @@ export function JuiceSection() {
           (250 ml) ou en grand format (1,5 L), à ajouter à votre commande avec vos plats.
         </p>
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Sur mobile : défilement horizontal (on voit le jus suivant), comme les plats du menu. */}
+        <div className="-mx-4 mt-10 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-4 scrollbar-hide sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 xl:grid-cols-4">
           {isLoading
-            ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-96 rounded-3xl" />)
+            ? [0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-96 w-[78%] shrink-0 rounded-3xl sm:w-auto" />
+              ))
             : juices.map((juice) => <JuiceCard key={juice.product_id} juice={juice} />)}
         </div>
       </div>
@@ -115,14 +118,23 @@ function JuiceCard({ juice }: { juice: Juice }) {
   };
 
   return (
-    <article className={cn("group flex flex-col", soldOut && "opacity-60 grayscale")}>
-      <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-secondary shadow-card transition-all duration-500 group-hover:-translate-y-1.5 group-hover:shadow-warm">
+    <article
+      className={cn(
+        "group flex w-[78%] shrink-0 snap-start flex-col sm:w-auto",
+        soldOut && "opacity-60 grayscale",
+      )}
+    >
+      <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-secondary shadow-card transition-all duration-500 group-hover:-translate-y-1.5 group-hover:shadow-warm">
         {juice.photo_url ? (
           <img
             src={juice.photo_url}
             alt={juice.name}
             loading="lazy"
-            className="size-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+            className={cn(
+              "size-full origin-top transition-transform duration-700 ease-out group-hover:scale-105",
+              // Photos de bouteilles (portrait) : cadrées en haut ; illustrations provisoires : entières.
+              juice.photo_url.endsWith(".svg") ? "object-contain" : "object-cover object-top",
+            )}
           />
         ) : (
           <div className="flex size-full items-center justify-center text-muted-foreground">

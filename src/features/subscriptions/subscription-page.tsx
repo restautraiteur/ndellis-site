@@ -200,11 +200,11 @@ const STEPS = [
 
 /**
  * Composition du haut de page : photo principale en arche sur un disque orangé, deux photos rondes
- * qui la chevauchent, anneau pointillé, motif de points et deux étiquettes.
+ * qui la chevauchent, motif de points et deux étiquettes.
  */
 function HeroCollage() {
   return (
-    <div className="relative mx-auto h-[380px] w-full max-w-[22rem] sm:h-[460px] sm:max-w-md">
+    <div className="relative mx-auto h-[420px] w-full max-w-[24rem] sm:h-[520px] sm:max-w-lg">
       <div
         aria-hidden="true"
         className="absolute right-0 top-4 h-40 w-40 opacity-25"
@@ -217,7 +217,6 @@ function HeroCollage() {
         aria-hidden="true"
         className="absolute left-1/2 top-1/2 aspect-square w-[92%] -translate-x-1/2 -translate-y-1/2"
       >
-        <div className="absolute -inset-4 animate-[spin_50s_linear_infinite] rounded-full border-2 border-dashed border-accent/35 motion-reduce:animate-none" />
         <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f6a26b,var(--accent)_60%,#a8431b)] opacity-90" />
       </div>
 
@@ -225,20 +224,20 @@ function HeroCollage() {
       <img
         src={fonioCrevettes}
         alt="Barquettes de fonio aux crevettes"
-        className="absolute left-1/2 top-1/2 h-[78%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-b-[1.75rem] rounded-t-full object-cover shadow-2xl ring-[6px] ring-sidebar"
+        className="absolute left-1/2 top-1/2 h-[84%] w-[58%] -translate-x-1/2 -translate-y-1/2 rounded-b-[2rem] rounded-t-full object-cover shadow-2xl ring-[6px] ring-sidebar"
       />
       {/* photos rondes qui chevauchent l'arche */}
       <img
         src={platPoisson}
         alt="Barquettes de poisson, riz et alloco"
         loading="lazy"
-        className="absolute left-0 top-[14%] size-28 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-36"
+        className="absolute left-0 top-[12%] size-32 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-44"
       />
       <img
         src={platPoulet}
         alt="Barquettes de poulet grillé et crudités"
         loading="lazy"
-        className="absolute bottom-[10%] right-0 size-28 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-36"
+        className="absolute bottom-[8%] right-0 size-32 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-44"
       />
 
       <div className="deco-float absolute bottom-2 left-0 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 text-foreground shadow-xl sm:bottom-6">
@@ -853,10 +852,10 @@ function Tracking() {
   return (
     <section
       id="suivi"
-      className="mx-auto grid max-w-6xl scroll-mt-24 items-start gap-10 px-4 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
+      className="mx-auto grid max-w-5xl scroll-mt-24 items-center gap-8 px-4 py-16 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]"
     >
       {/* Illustration : le tableau « Mon abonnement » et une abonnée qui savoure son repas */}
-      <div className="relative mx-auto w-full max-w-md lg:sticky lg:top-28 lg:max-w-none">
+      <div className="relative mx-auto w-full max-w-[17rem] sm:max-w-xs lg:max-w-none">
         <div
           aria-hidden="true"
           className="absolute left-1/2 top-1/2 aspect-square w-[85%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10"

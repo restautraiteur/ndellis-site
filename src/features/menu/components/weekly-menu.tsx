@@ -5,7 +5,6 @@ import { Badge } from "@ui/components/ui/badge";
 import { Skeleton } from "@ui/components/ui/skeleton";
 import { publicMenuQuery } from "@core/domain/menu/api";
 import { formatDay, formatDayShort, todayISO } from "@core/lib/format";
-import menuPattern from "@/assets/doodles-aliments.webp";
 import { ProductSection } from "@/features/menu/components/product-section";
 import { SectionPill } from "@/components/section-pill";
 
@@ -33,11 +32,6 @@ export function WeeklyMenu() {
 
   return (
     <div id="menu" className="relative scroll-mt-24 overflow-hidden">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-repeat opacity-[0.12] mix-blend-multiply"
-        style={{ backgroundImage: `url(${menuPattern})`, backgroundSize: "520px" }}
-      />
       <main className="relative mx-auto max-w-6xl px-4 py-10">
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

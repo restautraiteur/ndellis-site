@@ -16,7 +16,7 @@ export function SubscriptionCta() {
   const cheapest = Math.min(...plans.map((p) => p.price));
   const cheapestMeal = Math.min(...plans.map((p) => Math.round(p.price / p.meals_count)));
   return (
-    // « abo-cta » : la section des jus qui suit réserve la place du bandeau qui la chevauche.
+    // « abo-cta » : la section des jus réserve la place du bandeau qui la chevauche.
     <section className="abo-cta relative z-20 -mb-24 -mt-6 px-4 lg:-mb-32 lg:-mt-12 lg:pt-16">
       <div className="relative mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-sidebar text-sidebar-foreground shadow-warm lg:grid-cols-[1.1fr_1fr] lg:overflow-visible">
         {/* fond graphique : halo et motif de points, rognés aux coins arrondis */}
@@ -66,7 +66,7 @@ export function SubscriptionCta() {
 }
 
 /**
- * Composition : disque orangé et anneau pointillé derrière la cliente, qui déborde au-dessus du
+ * Composition : disque orangé derrière la cliente, qui déborde au-dessus du
  * bandeau sur grand écran ; deux étiquettes flottantes (semaine cochée, prix par repas).
  */
 function Illustration({ cheapestMeal }: { cheapestMeal: number }) {
@@ -78,8 +78,6 @@ function Illustration({ cheapestMeal }: { cheapestMeal: number }) {
         className="absolute inset-x-0 bottom-0 top-[-2rem] overflow-hidden rounded-b-[2rem] lg:rounded-bl-none"
       >
         <div className="absolute bottom-0 left-1/2 aspect-square w-[88%] max-w-[26rem] -translate-x-1/2 translate-y-[18%] lg:w-[78%]">
-          {/* anneau pointillé qui tourne lentement */}
-          <div className="absolute -inset-6 animate-[spin_40s_linear_infinite] rounded-full border-2 border-dashed border-accent/40 motion-reduce:animate-none" />
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_30%,#f6a26b,var(--accent)_55%,#a8431b)] shadow-[0_0_90px_-10px] shadow-accent/60" />
           <div className="absolute inset-[12%] rounded-full border border-white/20" />
         </div>

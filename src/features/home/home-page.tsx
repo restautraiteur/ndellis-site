@@ -15,6 +15,7 @@ import { ChefHatDivider } from "@/features/home/components/chef-hat-divider";
 import { FoodBackdrop } from "@/features/home/components/food-backdrop";
 import { TrustedCompaniesSection } from "@/features/home/components/trusted-companies-section";
 import { CartBar } from "@/features/cart/components/cart-bar";
+import menuPattern from "@/assets/doodles-aliments.webp";
 
 export function HomePage() {
   return (
@@ -23,9 +24,17 @@ export function HomePage() {
 
       <HeroShowcase />
 
-      <WeeklyMenu />
-
-      <SubscriptionCta />
+      {/* Motif du menu commun au menu et au bandeau abonnement : le bandeau fait partie du menu et
+          déborde sur les jus (sa marge négative arrête le motif pile au début des jus). */}
+      <div className="abo-zone relative">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-repeat opacity-[0.12] mix-blend-multiply"
+          style={{ backgroundImage: `url(${menuPattern})`, backgroundSize: "520px" }}
+        />
+        <WeeklyMenu />
+        <SubscriptionCta />
+      </div>
 
       <JuiceSection />
 

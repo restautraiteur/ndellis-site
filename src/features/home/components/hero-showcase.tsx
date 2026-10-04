@@ -2,6 +2,7 @@ import { ArrowDown, MessageCircle } from "lucide-react";
 
 import heroImage from "@/assets/plats-traiteur-header.webp";
 import heroImageMobile from "@/assets/plats-traiteur-header-mobile.webp";
+import { CLIENT } from "@/config/client";
 
 // Chiffres clés fournis par Ndelli's Traiteur.
 const STATS = [
@@ -9,6 +10,54 @@ const STATS = [
   { value: "5 000+", label: "Clients satisfaits" },
   { value: "2019", label: "Au service de Dakar depuis" },
 ];
+
+/**
+ * Pastilles de clients qui se chevauchent + nombre de clients (chiffre réel fourni par le restaurant).
+ * Initiales pour l'instant : pour mettre des photos, déposer de VRAIES photos de clients, prises avec
+ * leur accord, dans src/assets/clients/ et les renseigner dans `photo`. Jamais de photos de personnes
+ * trouvées sur internet présentées comme des clients.
+ */
+const AVATARS: { initials: string; color: string; photo?: string }[] = [
+  { initials: "A", color: "bg-[#c8643b]" },
+  { initials: "M", color: "bg-[#8a5a3c]" },
+  { initials: "F", color: "bg-[#d99a4e]" },
+  { initials: "I", color: "bg-[#6f7d4f]" },
+  { initials: "K", color: "bg-[#a8431b]" },
+];
+
+function CustomerAvatars() {
+  return (
+    <div className="mt-5 flex items-center justify-center gap-3">
+      <div className="flex -space-x-3">
+        {AVATARS.map((a) =>
+          a.photo ? (
+            <img
+              key={a.initials}
+              src={a.photo}
+              alt=""
+              className="size-10 rounded-full object-cover ring-2 ring-sidebar"
+            />
+          ) : (
+            <span
+              key={a.initials}
+              aria-hidden="true"
+              className={`flex size-10 items-center justify-center rounded-full text-sm font-bold text-white ring-2 ring-sidebar ${a.color}`}
+            >
+              {a.initials}
+            </span>
+          ),
+        )}
+        <span className="flex size-10 items-center justify-center rounded-full bg-sidebar-foreground text-[11px] font-bold text-sidebar ring-2 ring-sidebar">
+          +5k
+        </span>
+      </div>
+      <p className="text-left text-sm leading-tight text-sidebar-foreground/85">
+        <span className="block font-semibold text-sidebar-foreground">5 000+ clients</span>
+        livrés et satisfaits
+      </p>
+    </div>
+  );
+}
 
 /** Bannière d'accueil : titre centré sur la photo des plats (variante de `hero.tsx`). */
 export function HeroShowcase() {
@@ -31,8 +80,9 @@ export function HeroShowcase() {
       <div className="relative mx-auto max-w-4xl px-4 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-sidebar-foreground/15 bg-sidebar-foreground/5 px-4 py-1.5 text-xs font-semibold text-sidebar-foreground/85 backdrop-blur">
           <span className="size-2 rounded-full bg-accent" />
-          Précommandes du lundi au vendredi · Livraison à Dakar
+          Précommandes du lundi au vendredi · Livraison à {CLIENT.city}
         </span>
+        <CustomerAvatars />
         <h1 className="mt-5 font-display text-4xl font-bold uppercase leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
           Le goût de la maison,
           <span className="block italic text-accent">préparé chaque jour.</span>

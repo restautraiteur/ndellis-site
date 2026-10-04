@@ -34,6 +34,8 @@ import fonioCrevettes from "@/assets/fonio-crevettes.jpg";
 import platPoisson from "@/assets/plat-senegalais-2.jpg";
 import platPoulet from "@/assets/plat-senegalais-5.jpg";
 import fondComposer from "@/assets/fond-composer-abonnement.jpg";
+import heroFond from "@/assets/plats-traiteur-header.webp";
+import heroFondMobile from "@/assets/plats-traiteur-header-mobile.webp";
 import suiviRepas from "@/assets/suivi-repas.webp";
 import { Input } from "@ui/components/ui/input";
 import { formatDay, formatPrice, parseDate, todayISO } from "@core/lib/format";
@@ -98,7 +100,7 @@ function halfPrice(price: number) {
 export function SubscriptionPage() {
   return (
     <div className="min-h-screen bg-background">
-      <SiteHeader />
+      <SiteHeader overlay />
       <main>
         <Hero />
         <HowItWorks />
@@ -120,11 +122,25 @@ const PERKS = [
 function Hero() {
   return (
     <section className="relative overflow-hidden bg-sidebar text-sidebar-foreground">
+      {/* Photo de plats en fond (le menu de navigation est posé dessus), sous un voile brun */}
+      <img
+        src={heroFond}
+        srcSet={`${heroFondMobile} 960w, ${heroFond} 1920w`}
+        sizes="100vw"
+        alt=""
+        aria-hidden="true"
+        fetchPriority="high"
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-r from-sidebar via-sidebar/90 to-sidebar/70"
+      />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-24 top-10 size-96 rounded-full bg-accent/20 blur-3xl"
       />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-32 sm:pt-36 lg:grid-cols-[1.1fr_1fr] lg:pb-24">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-36 sm:pt-44 lg:grid-cols-[1.1fr_1fr] lg:pb-24">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-sidebar-foreground/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-accent">
             <CalendarDays className="size-3.5" /> Abonnement repas
@@ -237,7 +253,7 @@ function HeroCollage() {
           <span className="text-xs text-muted-foreground">un plat chaud chaque midi</span>
         </span>
       </div>
-      <div className="absolute right-2 top-0 flex items-center gap-2 rounded-full bg-card py-1.5 pl-1.5 pr-3 text-xs font-semibold text-foreground shadow-xl sm:right-6">
+      <div className="absolute right-[12%] top-[6%] flex items-center gap-2 rounded-full bg-card py-1.5 pl-1.5 pr-3 text-xs font-semibold text-foreground shadow-xl sm:right-[14%]">
         <span className="flex size-7 items-center justify-center rounded-full bg-success text-white">
           <Truck className="size-3.5" />
         </span>
@@ -408,7 +424,7 @@ function Builder() {
             Les formules d'abonnement arrivent très bientôt.
           </p>
         ) : (
-          <div className="mt-10 overflow-hidden rounded-[2rem] bg-card text-foreground shadow-warm">
+          <div className="mt-10 overflow-hidden rounded-[2rem] bg-card/80 text-foreground shadow-warm ring-1 ring-white/30 backdrop-blur-xl">
             <div className="grid gap-10 p-5 sm:p-8 lg:grid-cols-2">
               <div className="min-w-0">
                 <StepTitle n={1}>La formule</StepTitle>
@@ -546,7 +562,7 @@ function Builder() {
             </div>
 
             {/* barre du bas : résumé et bouton */}
-            <div className="flex flex-col gap-4 border-t border-border bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+            <div className="flex flex-col gap-4 border-t border-border/60 bg-card/50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
               <p className="text-sm text-muted-foreground">
                 {!valid
                   ? "Indiquez votre nom et votre téléphone pour réserver."

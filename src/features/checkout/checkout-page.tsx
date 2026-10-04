@@ -12,6 +12,8 @@ import { Textarea } from "@ui/components/ui/textarea";
 import { Checkbox } from "@ui/components/ui/checkbox";
 import { useServerFn } from "@tanstack/react-start";
 import { DEPOSIT_AMOUNT, placeOrder } from "@/features/checkout/api";
+import { JuiceSuggestions } from "@/features/checkout/juice-suggestions";
+import fondCommande from "@/assets/fond-composer-abonnement.jpg";
 import { isCancelledError } from "@core/lib/db";
 import { publicMenuQuery } from "@core/domain/menu/api";
 import { juiceCatalogQuery } from "@core/domain/juices/api";
@@ -230,19 +232,38 @@ export function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SiteHeader />
-      <main className="mx-auto max-w-5xl px-4 py-10">
-        <h1 className="font-display text-3xl font-bold">Ma précommande</h1>
-
+      <SiteHeader overlay />
+      {/* En-tête : photo de plats sous un voile brun, le menu de navigation est posé dessus */}
+      <section className="relative overflow-hidden bg-sidebar text-sidebar-foreground">
+        <img
+          src={fondCommande}
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className="pointer-events-none absolute inset-0 size-full select-none object-cover object-[center_40%]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-b from-sidebar/85 via-sidebar/70 to-sidebar/90"
+        />
+        <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-36 sm:pt-44">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Commande</p>
+          <h1 className="mt-2 font-display text-4xl font-bold sm:text-5xl">Ma précommande</h1>
+          <p className="mt-2 max-w-xl text-sm text-sidebar-foreground/80">
+            Vérifiez vos plats, ajoutez un jus si le cœur vous en dit, puis indiquez où livrer.
+          </p>
+        </div>
+      </section>
+      <main className="relative mx-auto -mt-16 max-w-5xl px-4 pb-10">
         {items.length === 0 ? (
-          <div className="surface-card mt-8 p-10 text-center">
+          <div className="surface-card p-10 text-center">
             <p className="text-muted-foreground">Votre panier est vide.</p>
             <Button asChild className="mt-4">
               <Link to="/">Voir le menu</Link>
             </Button>
           </div>
         ) : (
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
             <div className="space-y-6">
               {grouped.map(([day, dayItems]) => (
                 <section key={day ?? "jus"} className="surface-card p-4">
@@ -293,6 +314,8 @@ export function CheckoutPage() {
                   </ul>
                 </section>
               ))}
+
+              {!items.some((i) => i.source === "jus") && <JuiceSuggestions />}
 
               {unavailable.length > 0 && (
                 <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">

@@ -6,14 +6,18 @@ import { plansQuery } from "@/features/subscriptions/api";
 import gourmande from "@/assets/abonnement-gourmande.webp";
 import { formatPrice } from "@core/lib/format";
 
-/** Bandeau d'accueil vers l'abonnement : masqué si le module est désactivé ou sans formule. */
+/**
+ * Bandeau d'accueil vers l'abonnement, à cheval entre le menu de la semaine et les jus.
+ * Masqué si le module est désactivé ou sans formule.
+ */
 export function SubscriptionCta() {
   const { data: plans = [] } = useQuery(plansQuery());
   if (!CLIENT.subscriptions || plans.length === 0) return null;
   const cheapest = Math.min(...plans.map((p) => p.price));
   const cheapestMeal = Math.min(...plans.map((p) => Math.round(p.price / p.meals_count)));
   return (
-    <section className="bg-background px-4 pb-10 pt-12 lg:pt-24">
+    // « abo-cta » : la section des jus qui suit réserve la place du bandeau qui la chevauche.
+    <section className="abo-cta relative z-20 -mb-24 -mt-6 px-4 lg:-mb-32 lg:-mt-12 lg:pt-16">
       <div className="relative mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-sidebar text-sidebar-foreground shadow-warm lg:grid-cols-[1.1fr_1fr] lg:overflow-visible">
         {/* fond graphique : halo et motif de points, rognés aux coins arrondis */}
         <div

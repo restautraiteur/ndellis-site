@@ -53,7 +53,7 @@ export function JuiceSection() {
   return (
     <section
       id="jus"
-      className="relative scroll-mt-24 overflow-hidden border-y border-border/70 bg-cream py-16 sm:py-20"
+      className="relative scroll-mt-24 overflow-hidden border-y border-border/70 bg-cream py-16 sm:py-20 [.abo-cta+&]:pt-40 lg:[.abo-cta+&]:pt-52"
     >
       {/* fond de fruits : le blanc de la photo se fond dans le crème (multiply), opacité réduite pour la lisibilité */}
       <img

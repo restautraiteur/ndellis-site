@@ -34,6 +34,7 @@ import fonioCrevettes from "@/assets/fonio-crevettes.jpg";
 import platPoisson from "@/assets/plat-senegalais-2.jpg";
 import platPoulet from "@/assets/plat-senegalais-5.jpg";
 import fondComposer from "@/assets/fond-composer-abonnement.jpg";
+import suiviRepas from "@/assets/suivi-repas.webp";
 import { Input } from "@ui/components/ui/input";
 import { formatDay, formatPrice, parseDate, todayISO } from "@core/lib/format";
 import { cn } from "@core/lib/utils";
@@ -340,16 +341,22 @@ function Builder() {
   const dueNow = plan ? (paymentChoice === "moitie" ? halfPrice(plan.price) : plan.price) : 0;
 
   return (
-    <section id="formules" className="relative scroll-mt-24 overflow-hidden bg-cream py-16">
-      {/* Illustration en fond sous un voile crème : la page reste lisible, en plus vivant */}
+    <section
+      id="formules"
+      className="relative scroll-mt-24 overflow-hidden bg-sidebar py-16 text-sidebar-foreground"
+    >
+      {/* Photo de plats en fond sous un voile brun : les cartes claires ressortent, le texte reste lisible */}
       <img
         src={fondComposer}
         alt=""
         aria-hidden="true"
         loading="lazy"
-        className="pointer-events-none absolute inset-0 size-full select-none object-cover object-[center_30%]"
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover object-center"
       />
-      <div aria-hidden="true" className="absolute inset-0 bg-cream/85" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gradient-to-b from-sidebar/90 via-sidebar/75 to-sidebar/90"
+      />
       <div className="relative mx-auto max-w-6xl px-4">
         <p className="text-xs font-bold uppercase tracking-widest text-accent">Votre abonnement</p>
         <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
@@ -369,7 +376,7 @@ function Builder() {
             }}
           />
         ) : !isLoading && plans.length === 0 ? (
-          <p className="mt-10 rounded-3xl bg-card p-10 text-center text-muted-foreground">
+          <p className="mt-10 rounded-3xl bg-card p-10 text-center text-muted-foreground shadow-warm">
             Les formules d'abonnement arrivent très bientôt.
           </p>
         ) : (
@@ -387,7 +394,7 @@ function Builder() {
                         aria-pressed={selected}
                         onClick={() => setPlanId(p.id)}
                         className={cn(
-                          "relative flex flex-col rounded-3xl border-2 bg-card p-5 text-left transition-all",
+                          "relative flex flex-col rounded-3xl border-2 bg-card p-5 text-left text-foreground transition-all",
                           selected
                             ? "border-accent shadow-warm"
                             : "border-transparent hover:border-accent/40",
@@ -419,7 +426,7 @@ function Builder() {
 
               <div>
                 <StepTitle n={2}>À partir de quand ?</StepTitle>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-sidebar-foreground/75">
                   Touchez un jour pour démarrer. Le calendrier montre vos repas si vous mangez
                   chaque jour ouvré ; un jour sans commande est simplement reporté.
                 </p>
@@ -435,14 +442,14 @@ function Builder() {
                 <StepTitle n={3}>Vos coordonnées</StepTitle>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Input
-                    className="h-12 bg-card"
+                    className="h-12 bg-card text-foreground"
                     placeholder="Nom et prénom"
                     autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
                   <Input
-                    className="h-12 bg-card"
+                    className="h-12 bg-card text-foreground"
                     placeholder="Téléphone (pour vous rappeler)"
                     inputMode="tel"
                     autoComplete="tel"
@@ -450,7 +457,7 @@ function Builder() {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                   <Input
-                    className="h-12 bg-card sm:col-span-2"
+                    className="h-12 bg-card text-foreground sm:col-span-2"
                     placeholder="Adresse de livraison : quartier, rue, repère (facultatif)"
                     autoComplete="street-address"
                     value={address}
@@ -497,7 +504,7 @@ function Builder() {
             </div>
 
             <aside className="lg:sticky lg:top-28 lg:self-start">
-              <div className="rounded-3xl bg-sidebar p-6 text-sidebar-foreground shadow-warm">
+              <div className="rounded-3xl bg-sidebar/90 p-6 text-sidebar-foreground shadow-warm ring-1 ring-sidebar-foreground/15 backdrop-blur-md">
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">
                   Récapitulatif
                 </p>
@@ -582,7 +589,7 @@ function Choice({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "flex items-start gap-3 rounded-2xl border-2 bg-card p-4 text-left transition-colors",
+        "flex items-start gap-3 rounded-2xl border-2 bg-card p-4 text-left text-foreground transition-colors",
         selected ? "border-accent" : "border-transparent hover:border-accent/40",
       )}
     >
@@ -641,7 +648,7 @@ function MealCalendar({
   }
 
   return (
-    <div className="mt-4 rounded-3xl bg-card p-4 sm:p-5">
+    <div className="mt-4 rounded-3xl bg-card p-4 text-foreground sm:p-5">
       <div className="grid grid-cols-5 gap-1.5 text-center text-[11px] font-semibold uppercase text-muted-foreground sm:gap-2">
         {["Lun", "Mar", "Mer", "Jeu", "Ven"].map((d) => (
           <span key={d}>{d}</span>
@@ -725,7 +732,7 @@ function Confirmation({
   const payFailed =
     online && !!payStatus && !["completed", "checking", "pending"].includes(payStatus);
   return (
-    <div className="mt-10 rounded-3xl bg-card p-8 text-center shadow-warm sm:p-12">
+    <div className="mt-10 rounded-3xl bg-card p-8 text-center text-foreground shadow-warm sm:p-12">
       <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-success/15 text-success">
         <Check className="size-8" />
       </span>
@@ -809,50 +816,75 @@ function Tracking() {
   const canSearch = phone.replace(/\D/g, "").length >= 7;
 
   return (
-    <section id="suivi" className="mx-auto max-w-3xl scroll-mt-24 px-4 py-16">
-      <div className="text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-accent">Déjà abonné ?</p>
-        <h2 className="mt-2 font-display text-3xl font-bold">Suivez vos repas</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Entrez votre numéro pour voir combien de repas il vous reste, ceux déjà livrés et ce qu'il
-          reste à régler.
-        </p>
-      </div>
-      <form
-        className="mx-auto mt-6 flex max-w-md gap-2 rounded-full border border-border bg-card p-1.5 shadow-sm"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSearch) search.mutate();
-        }}
-      >
-        <Input
-          className="h-11 min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0"
-          placeholder="Votre numéro de téléphone"
-          inputMode="tel"
-          autoComplete="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+    <section
+      id="suivi"
+      className="mx-auto grid max-w-6xl scroll-mt-24 items-start gap-10 px-4 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
+    >
+      {/* Illustration : la semaine cochée, le repas savouré, le livreur */}
+      <div className="relative mx-auto w-full max-w-sm lg:sticky lg:top-28 lg:max-w-none">
+        <div
+          aria-hidden="true"
+          className="absolute -inset-3 -rotate-2 rounded-[2.25rem] border-2 border-dashed border-accent/40"
         />
-        <button
-          type="submit"
-          disabled={!canSearch || search.isPending}
-          className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+        <img
+          src={suiviRepas}
+          alt="Une abonnée savoure son repas : sa semaine est cochée et le livreur arrive avec la commande"
+          loading="lazy"
+          width={800}
+          height={839}
+          className="relative aspect-[4/5] w-full rounded-[2rem] object-cover object-top shadow-warm lg:aspect-[800/839]"
+        />
+        <div className="absolute -bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-card px-4 py-2 text-sm font-semibold shadow-xl">
+          <Check className="size-4 rounded-full bg-success p-0.5 text-white" /> Repas livré, il en
+          reste 13
+        </div>
+      </div>
+
+      <div>
+        <div className="text-center lg:text-left">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Déjà abonné ?</p>
+          <h2 className="mt-2 font-display text-3xl font-bold">Suivez vos repas</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground lg:mx-0">
+            Entrez votre numéro pour voir combien de repas il vous reste, ceux déjà livrés et ce
+            qu'il reste à régler.
+          </p>
+        </div>
+        <form
+          className="mx-auto mt-6 flex max-w-md gap-2 rounded-full border border-border bg-card p-1.5 shadow-sm lg:mx-0"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (canSearch) search.mutate();
+          }}
         >
-          <Search className="size-4" /> <span className="hidden sm:inline">Rechercher</span>
-        </button>
-      </form>
+          <Input
+            className="h-11 min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0"
+            placeholder="Votre numéro de téléphone"
+            inputMode="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={!canSearch || search.isPending}
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            <Search className="size-4" /> <span className="hidden sm:inline">Rechercher</span>
+          </button>
+        </form>
 
-      {results !== null && results.length === 0 && (
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Aucun abonnement trouvé pour ce numéro. Vérifiez qu'il s'agit bien de celui donné à la
-          réservation.
-        </p>
-      )}
+        {results !== null && results.length === 0 && (
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Aucun abonnement trouvé pour ce numéro. Vérifiez qu'il s'agit bien de celui donné à la
+            réservation.
+          </p>
+        )}
 
-      <div className="mt-8 space-y-5">
-        {(results ?? []).map((s) => (
-          <SubscriptionCard key={s.id} sub={s} today={today} />
-        ))}
+        <div className="mt-8 space-y-5">
+          {(results ?? []).map((s) => (
+            <SubscriptionCard key={s.id} sub={s} today={today} />
+          ))}
+        </div>
       </div>
     </section>
   );

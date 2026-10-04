@@ -122,8 +122,11 @@ export async function checkSubscription(phone: string, pin: string, days: string
   return data as SubscriptionCheck;
 }
 
-export async function lookupSubscriptions(phone: string) {
-  const { data, error } = await db.rpc("lookup_subscriptions", { p_phone: phone });
+/** Suivi : téléphone + code abonné (le numéro seul ne suffit pas). */
+export async function lookupSubscriptions(phone: string, pin: string) {
+  const { data, error } = await db.rpc("lookup_subscriptions", { p_phone: phone, p_pin: pin });
   if (error) throw new Error(error.message);
-  return (data ?? []) as MySubscription[];
+  const result = data as { ok: boolean; error?: string; subscriptions?: MySubscription[] };
+  if (!result.ok) throw new Error(result.error ?? "Abonnement introuvable.");
+  return result.subscriptions ?? [];
 }

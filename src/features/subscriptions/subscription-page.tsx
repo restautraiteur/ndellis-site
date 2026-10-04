@@ -846,14 +846,15 @@ function Confirmation({
 
 function Tracking() {
   const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
   const [results, setResults] = useState<MySubscription[] | null>(null);
   const search = useMutation({
-    mutationFn: () => lookupSubscriptions(phone),
+    mutationFn: () => lookupSubscriptions(phone, pin),
     onSuccess: setResults,
     onError: (error: Error) => toast.error(error.message),
   });
   const today = todayISO();
-  const canSearch = phone.replace(/\D/g, "").length >= 7;
+  const canSearch = phone.replace(/\D/g, "").length >= 7 && /^\d{4}$/.test(pin);
 
   return (
     <section
@@ -885,12 +886,12 @@ function Tracking() {
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Déjà abonné ?</p>
           <h2 className="mt-2 font-display text-3xl font-bold">Suivez vos repas</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground lg:mx-0">
-            Entrez votre numéro pour voir combien de repas il vous reste, ceux déjà livrés et ce
-            qu'il reste à régler.
+            Entrez votre numéro et votre code abonné pour voir combien de repas il vous reste, ceux
+            déjà livrés et ce qu'il reste à régler.
           </p>
         </div>
         <form
-          className="mx-auto mt-6 flex max-w-md gap-2 rounded-full border border-border bg-card p-1.5 shadow-sm lg:mx-0"
+          className="mx-auto mt-6 flex max-w-lg flex-wrap gap-2 rounded-3xl border border-border bg-card p-1.5 shadow-sm sm:flex-nowrap sm:rounded-full lg:mx-0"
           onSubmit={(e) => {
             e.preventDefault();
             if (canSearch) search.mutate();
@@ -904,6 +905,16 @@ function Tracking() {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
+          <Input
+            className="h-11 w-full border-0 bg-muted/60 shadow-none focus-visible:ring-0 sm:w-36 sm:rounded-full"
+            placeholder="Code abonné"
+            aria-label="Code abonné à 4 chiffres"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+          />
           <button
             type="submit"
             disabled={!canSearch || search.isPending}
@@ -915,14 +926,13 @@ function Tracking() {
 
         {results !== null && results.length === 0 && (
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            Aucun abonnement trouvé pour ce numéro. Vérifiez qu'il s'agit bien de celui donné à la
-            réservation.
+            Aucun abonnement actif pour ce numéro et ce code.
           </p>
         )}
 
         <div className="mt-8 space-y-5">
           {(results ?? []).map((s) => (
-            <SubscriptionCard key={s.id} sub={s} today={today} />
+            <SubscriptionCard key={s.id} sub={s} today={today} pin={pin} />
           ))}
         </div>
       </div>
@@ -930,7 +940,15 @@ function Tracking() {
   );
 }
 
-function SubscriptionCard({ sub, today }: { sub: MySubscription; today: string }) {
+function SubscriptionCard({
+  sub,
+  today,
+  pin,
+}: {
+  sub: MySubscription;
+  today: string;
+  pin: string;
+}) {
   const delivered = sub.meals.filter((m) => m.status === "pris").length;
   const ordered = sub.meals.length - delivered;
   const used = sub.meals.length;
@@ -999,7 +1017,9 @@ function SubscriptionCard({ sub, today }: { sub: MySubscription; today: string }
         </p>
       )}
 
-      {balance > 0 && sub.status !== "annulee" && <BalanceBox sub={sub} balance={balance} />}
+      {balance > 0 && sub.status !== "annulee" && (
+        <BalanceBox sub={sub} balance={balance} pin={pin} />
+      )}
 
       {sub.meals.length > 0 && (
         <ul className="mt-5 divide-y divide-border text-sm">
@@ -1026,8 +1046,8 @@ function SubscriptionCard({ sub, today }: { sub: MySubscription; today: string }
 }
 
 /** Reste à payer, avec paiement en ligne (le code abonné est demandé). */
-function BalanceBox({ sub, balance }: { sub: MySubscription; balance: number }) {
-  const [pin, setPin] = useState("");
+/** Reste à payer : le code a déjà été saisi pour afficher le suivi. */
+function BalanceBox({ sub, balance, pin }: { sub: MySubscription; balance: number; pin: string }) {
   const pay = useServerFn(startSubscriptionPayment);
   const mutation = useMutation({
     mutationFn: () => pay({ data: { subscriptionId: sub.id, pin } }),
@@ -1053,29 +1073,14 @@ function BalanceBox({ sub, balance }: { sub: MySubscription; balance: number }) 
           </>
         )}
       </p>
-      <form
-        className="mt-3 flex flex-wrap gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (/^\d{4}$/.test(pin)) mutation.mutate();
-        }}
+      <button
+        type="button"
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
+        className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
       >
-        <Input
-          className="h-10 w-36 bg-white"
-          placeholder="Code abonné"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-        />
-        <button
-          type="submit"
-          disabled={!/^\d{4}$/.test(pin) || mutation.isPending}
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"
-        >
-          <CreditCard className="size-4" /> Payer en ligne
-        </button>
-      </form>
+        <CreditCard className="size-4" /> Payer en ligne
+      </button>
     </div>
   );
 }

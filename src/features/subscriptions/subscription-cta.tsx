@@ -89,23 +89,12 @@ export function SubscriptionCta() {
 }
 
 /**
- * Composition : disque orangé derrière la cliente, qui déborde au-dessus du
+ * Composition : la cliente, qui déborde au-dessus du
  * bandeau sur grand écran ; deux étiquettes flottantes (semaine cochée, prix par repas).
  */
 function Illustration({ cheapestMeal }: { cheapestMeal: number }) {
   return (
     <div className="relative mx-auto mt-6 h-80 w-full max-w-[26rem] sm:h-96 lg:mt-0 lg:h-full lg:max-w-none">
-      {/* le disque est coupé par le bas du bandeau, la cliente dépasse par le haut */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-0 top-[-2rem] overflow-hidden rounded-b-[2rem] lg:rounded-bl-none"
-      >
-        <div className="absolute bottom-0 left-1/2 aspect-square w-[88%] max-w-[26rem] -translate-x-1/2 translate-y-[18%] lg:w-[78%]">
-          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_30%,#f6a26b,var(--accent)_55%,#a8431b)] shadow-[0_0_90px_-10px] shadow-accent/60" />
-          <div className="absolute inset-[12%] rounded-full border border-white/20" />
-        </div>
-      </div>
-
       <img
         src={gourmande}
         alt="Une cliente savoure son repas d'abonnement livré en barquette, avec un jus frais"

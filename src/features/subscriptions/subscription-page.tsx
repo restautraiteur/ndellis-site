@@ -193,8 +193,8 @@ const STEPS = [
 ];
 
 /**
- * Composition du haut de page : photo principale en arche sur un disque orangé, deux photos rondes
- * qui la chevauchent, motif de points et deux étiquettes.
+ * Composition du haut de page : photo principale en arche, deux photos rondes qui la chevauchent,
+ * motif de points et deux étiquettes.
  */
 function HeroCollage() {
   return (
@@ -207,12 +207,6 @@ function HeroCollage() {
           backgroundSize: "16px 16px",
         }}
       />
-      <div
-        aria-hidden="true"
-        className="absolute left-1/2 top-1/2 aspect-square w-[92%] -translate-x-1/2 -translate-y-1/2"
-      >
-        <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f6a26b,var(--accent)_60%,#a8431b)] opacity-90" />
-      </div>
 
       {/* photo principale en arche */}
       <img
@@ -328,7 +322,13 @@ function Builder() {
   }, [startOptions, start]);
 
   const plan = plans.find((p) => p.id === planId) ?? null;
-  const { data: planDates = [] } = useQuery(subscriptionDatesQuery(start, plan?.meals_count ?? 0));
+  // Jours de repas pour la plus grande formule : la date de fin de chaque formule s'en déduit.
+  const maxCount = Math.max(0, ...plans.map((p) => p.meals_count));
+  const { data: allDates = [] } = useQuery(subscriptionDatesQuery(start, maxCount));
+  const planDates = useMemo(
+    () => (plan ? allDates.slice(0, plan.meals_count) : []),
+    [allDates, plan],
+  );
   const bestValueId = useMemo(() => {
     if (plans.length < 2) return null;
     return plans.reduce((best, p) => (perMeal(p) < perMeal(best) ? p : best)).id;
@@ -408,13 +408,14 @@ function Builder() {
             Les formules d'abonnement arrivent très bientôt.
           </p>
         ) : (
-          <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_340px]">
-            <div className="min-w-0 space-y-10">
-              <div>
-                <StepTitle n={1}>Combien de repas ?</StepTitle>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-10 overflow-hidden rounded-[2rem] bg-card text-foreground shadow-warm">
+            <div className="grid gap-10 p-5 sm:p-8 lg:grid-cols-2">
+              <div className="min-w-0">
+                <StepTitle n={1}>La formule</StepTitle>
+                <div className="mt-5 space-y-3">
                   {plans.map((p) => {
                     const selected = p.id === planId;
+                    const end = allDates[p.meals_count - 1];
                     return (
                       <button
                         key={p.id}
@@ -422,174 +423,153 @@ function Builder() {
                         aria-pressed={selected}
                         onClick={() => setPlanId(p.id)}
                         className={cn(
-                          "relative flex flex-col rounded-3xl border-2 bg-card p-5 text-left text-foreground transition-all",
+                          "relative flex w-full items-center gap-4 rounded-2xl border-2 p-3 text-left transition-all sm:p-4",
                           selected
-                            ? "border-accent shadow-warm"
-                            : "border-transparent hover:border-accent/40",
+                            ? "border-primary bg-card shadow-warm"
+                            : "border-transparent bg-muted/60 hover:border-accent/40",
                         )}
                       >
-                        {p.id === bestValueId && (
-                          <span className="absolute -top-3 left-5 inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                            <Sparkles className="size-3" /> Meilleur prix par repas
+                        <span
+                          className={cn(
+                            "flex size-14 shrink-0 flex-col items-center justify-center rounded-2xl leading-none sm:size-16",
+                            selected ? "bg-primary text-primary-foreground" : "bg-card",
+                          )}
+                        >
+                          <span className="font-display text-2xl font-bold">{p.meals_count}</span>
+                          <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide">
+                            repas
                           </span>
-                        )}
-                        <span className="flex items-baseline gap-1.5">
-                          <span className="font-display text-4xl font-bold">{p.meals_count}</span>
-                          <span className="text-sm text-muted-foreground">repas</span>
                         </span>
-                        <span className="mt-1 text-sm font-semibold">{p.name}</span>
-                        <span className="mt-4 text-lg font-bold">{formatPrice(p.price)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          soit {formatPrice(perMeal(p))} le repas
-                          {p.delivery_included ? ", livré" : ""}
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-semibold">{p.name}</span>
+                          <span className="block text-sm text-muted-foreground">
+                            {end ? `Jusqu'au ${formatDay(end).toLowerCase()}` : "…"}
+                          </span>
+                          <span className="block text-xs font-semibold text-accent">
+                            {p.delivery_included ? "Livraison incluse · " : ""}
+                            {formatPrice(perMeal(p))} le repas
+                          </span>
                         </span>
-                        {selected && (
-                          <Check className="absolute right-4 top-4 size-6 rounded-full bg-accent p-1 text-accent-foreground" />
-                        )}
+                        <span className="flex shrink-0 flex-col items-end gap-1.5">
+                          <span className="font-bold">{formatPrice(p.price)}</span>
+                          {selected ? (
+                            <Check className="size-6 rounded-full bg-primary p-1 text-primary-foreground" />
+                          ) : (
+                            p.id === bestValueId && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                                <Sparkles className="size-3" /> Meilleur prix
+                              </span>
+                            )
+                          )}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div>
-                <StepTitle n={2}>À partir de quand ?</StepTitle>
-                <p className="mt-2 text-sm text-sidebar-foreground/75">
-                  Un jour sans commande n'est pas perdu : le repas est reporté à la fin.
-                </p>
-                <MealCalendar
-                  startOptions={startOptions}
-                  start={start}
-                  onStart={setStart}
-                  mealDates={planDates}
-                />
-              </div>
-
-              <div>
-                <StepTitle n={3}>Vos coordonnées</StepTitle>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Input
-                    className="h-12 bg-card text-foreground"
-                    placeholder="Nom et prénom"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  <Input
-                    className="h-12 bg-card text-foreground"
-                    placeholder="Téléphone (pour vous rappeler)"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                  <Input
-                    className="h-12 bg-card text-foreground sm:col-span-2"
-                    placeholder="Adresse de livraison : quartier, rue, repère (facultatif)"
-                    autoComplete="street-address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+              <div className="min-w-0 space-y-10">
+                <div>
+                  <StepTitle n={2}>À partir de quand ?</StepTitle>
+                  <MealCalendar
+                    startOptions={startOptions}
+                    start={start}
+                    onStart={setStart}
+                    mealDates={planDates}
                   />
                 </div>
-              </div>
 
-              <div>
-                <StepTitle n={4}>Le règlement</StepTitle>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Choice
-                    selected={paymentChoice === "total"}
-                    onClick={() => setPaymentChoice("total")}
-                    title="En une fois"
-                    text={plan ? formatPrice(plan.price) : ""}
-                  />
-                  <Choice
-                    selected={paymentChoice === "moitie"}
-                    onClick={() => setPaymentChoice("moitie")}
-                    title="La moitié maintenant"
-                    text={
-                      plan
-                        ? `${formatPrice(halfPrice(plan.price))}, le reste avant votre dernier repas`
-                        : ""
-                    }
-                  />
-                  <Choice
-                    selected={paymentMode === "en_ligne"}
-                    onClick={() => setPaymentMode("en_ligne")}
-                    icon={CreditCard}
-                    title="Payer en ligne"
-                    text="Wave, Orange Money, Free Money ou carte. Abonnement confirmé tout de suite."
-                  />
-                  <Choice
-                    selected={paymentMode === "telephone"}
-                    onClick={() => setPaymentMode("telephone")}
-                    icon={PhoneCall}
-                    title="Être appelé"
-                    text={`${CLIENT.name} vous appelle pour confirmer et encaisser.`}
-                  />
+                <div>
+                  <StepTitle n={3}>Vos coordonnées</StepTitle>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Input
+                      className="h-12 bg-card"
+                      placeholder="Nom et prénom"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                    <Input
+                      className="h-12 bg-card"
+                      placeholder="Téléphone (pour vous rappeler)"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                    <Input
+                      className="h-12 bg-card sm:col-span-2"
+                      placeholder="Adresse de livraison : quartier, rue, repère (facultatif)"
+                      autoComplete="street-address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <StepTitle n={4}>Le règlement</StepTitle>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Choice
+                      selected={paymentChoice === "total"}
+                      onClick={() => setPaymentChoice("total")}
+                      title="En une fois"
+                      text={plan ? formatPrice(plan.price) : ""}
+                    />
+                    <Choice
+                      selected={paymentChoice === "moitie"}
+                      onClick={() => setPaymentChoice("moitie")}
+                      title="La moitié maintenant"
+                      text={
+                        plan
+                          ? `${formatPrice(halfPrice(plan.price))}, le reste avant votre dernier repas`
+                          : ""
+                      }
+                    />
+                    <Choice
+                      selected={paymentMode === "en_ligne"}
+                      onClick={() => setPaymentMode("en_ligne")}
+                      icon={CreditCard}
+                      title="Payer en ligne"
+                      text="Wave, Orange Money, Free Money ou carte. Abonnement confirmé tout de suite."
+                    />
+                    <Choice
+                      selected={paymentMode === "telephone"}
+                      onClick={() => setPaymentMode("telephone")}
+                      icon={PhoneCall}
+                      title="Être appelé"
+                      text={`${CLIENT.name} vous appelle pour confirmer et encaisser.`}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <aside className="lg:sticky lg:top-28 lg:self-start">
-              <div className="rounded-3xl bg-sidebar/90 p-6 text-sidebar-foreground shadow-warm ring-1 ring-sidebar-foreground/15 backdrop-blur-md">
-                <p className="text-xs font-bold uppercase tracking-widest text-accent">
-                  Récapitulatif
-                </p>
-                {plan ? (
-                  <>
-                    <p className="mt-3 font-display text-2xl font-bold">{plan.name}</p>
-                    <dl className="mt-4 space-y-2 text-sm">
-                      <Row label="Repas">{plan.meals_count}</Row>
-                      <Row label="Premier repas">{start ? formatDay(start) : "—"}</Row>
-                      <Row label="Dernier repas">
-                        {planDates.length ? formatDay(planDates[planDates.length - 1]!) : "—"}
-                      </Row>
-                      <Row label="Livraison">{plan.delivery_included ? "Incluse" : "En sus"}</Row>
-                      <Row label="Prix par repas">{formatPrice(perMeal(plan))}</Row>
-                      <Row label="Règlement">
-                        {paymentChoice === "moitie" ? "En deux fois" : "En une fois"}
-                      </Row>
-                    </dl>
-                    <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-sidebar-foreground/15 pt-4">
-                      <span className="text-sm">Total</span>
-                      <span className="font-display text-2xl font-bold">
-                        {formatPrice(plan.price)}
-                      </span>
-                    </div>
-                    {paymentChoice === "moitie" && (
-                      <div className="mt-1 flex justify-between gap-3 text-sm text-sidebar-foreground/70">
-                        <span>{paymentMode === "en_ligne" ? "Maintenant" : "À l'appel"}</span>
-                        <span className="font-semibold text-sidebar-foreground">
-                          {formatPrice(dueNow)}
-                        </span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="mt-3 text-sm text-sidebar-foreground/70">Choisissez une formule.</p>
-                )}
-                <button
-                  type="button"
-                  disabled={!valid || subscribe.isPending}
-                  onClick={() => subscribe.mutate()}
-                  className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-                >
-                  <CalendarCheck className="size-4" />
-                  {subscribe.isPending
-                    ? "Un instant…"
-                    : paymentMode === "en_ligne" && plan
-                      ? `Payer ${formatPrice(dueNow)}`
-                      : "Réserver mes repas"}
-                </button>
-                <p className="mt-3 text-center text-xs text-sidebar-foreground/60">
-                  {!valid
-                    ? "Indiquez votre nom et votre téléphone pour réserver."
+            {/* barre du bas : résumé et bouton */}
+            <div className="flex flex-col gap-4 border-t border-border bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+              <p className="text-sm text-muted-foreground">
+                {!valid
+                  ? "Indiquez votre nom et votre téléphone pour réserver."
+                  : paymentMode === "en_ligne"
+                    ? "Paiement sécurisé par PayDunya. Votre code abonné s'affiche au retour."
+                    : `Rien à payer maintenant : ${CLIENT.name} vous appelle pour confirmer et encaisser.`}
+              </p>
+              <button
+                type="button"
+                disabled={!valid || subscribe.isPending}
+                onClick={() => subscribe.mutate()}
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-accent px-6 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                <CalendarCheck className="size-4" />
+                {subscribe.isPending
+                  ? "Un instant…"
+                  : !plan
+                    ? "Réserver mes repas"
                     : paymentMode === "en_ligne"
-                      ? "Paiement sécurisé par PayDunya. Votre code abonné s'affiche au retour."
-                      : "Rien à payer maintenant : nous vous appelons pour confirmer."}
-                </p>
-              </div>
-            </aside>
+                      ? `Payer ${formatPrice(dueNow)}`
+                      : `Réserver · ${formatPrice(plan.price)}`}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -617,7 +597,7 @@ function Choice({
       onClick={onClick}
       className={cn(
         "flex items-start gap-3 rounded-2xl border-2 bg-card p-4 text-left text-foreground transition-colors",
-        selected ? "border-accent" : "border-transparent hover:border-accent/40",
+        selected ? "border-accent" : "border-border hover:border-accent/40",
       )}
     >
       <span
@@ -635,15 +615,6 @@ function Choice({
         <span className="mt-0.5 block text-xs text-muted-foreground">{text}</span>
       </span>
     </button>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-sidebar-foreground/60">{label}</dt>
-      <dd className="text-right font-medium">{children}</dd>
-    </div>
   );
 }
 
@@ -692,7 +663,7 @@ function MealCalendar({
   mealDates: string[];
 }) {
   if (startOptions.length === 0) {
-    return <div className="mt-4 h-48 animate-pulse rounded-3xl bg-card" />;
+    return <div className="mt-4 h-48 animate-pulse rounded-3xl bg-muted" />;
   }
   const end = mealDates[mealDates.length - 1];
   // Jours de repas et jours fermés intercalés, dans l'ordre.
@@ -710,7 +681,7 @@ function MealCalendar({
   return (
     <div className="mt-4 space-y-4">
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-sidebar-foreground/70">
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
           Je commence le
         </p>
         <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-hide">
@@ -731,7 +702,7 @@ function MealCalendar({
                     "transition-all",
                     selected
                       ? "bg-accent text-accent-foreground shadow-warm"
-                      : "bg-card text-foreground hover:-translate-y-0.5",
+                      : "bg-muted text-foreground hover:-translate-y-0.5",
                   )}
                 />
               </button>
@@ -741,7 +712,7 @@ function MealCalendar({
       </div>
 
       {tiles.length > 0 && end && (
-        <div className="rounded-3xl bg-card p-4 text-foreground sm:p-5">
+        <div className="rounded-3xl bg-muted/60 p-4 sm:p-5">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Vos {mealDates.length} repas
           </p>

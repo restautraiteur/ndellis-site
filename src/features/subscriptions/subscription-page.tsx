@@ -33,7 +33,7 @@ import { checkPayment, startSubscriptionPayment } from "@/features/payment/paydu
 import fonioCrevettes from "@/assets/fonio-crevettes.jpg";
 import platPoisson from "@/assets/plat-senegalais-2.jpg";
 import platPoulet from "@/assets/plat-senegalais-5.jpg";
-import fondCommentCaMarche from "@/assets/fond-comment-ca-marche.jpg";
+import fondComposer from "@/assets/fond-composer-abonnement.jpg";
 import { Input } from "@ui/components/ui/input";
 import { formatDay, formatPrice, parseDate, todayISO } from "@core/lib/format";
 import { cn } from "@core/lib/utils";
@@ -226,38 +226,22 @@ const STEPS = [
 
 function HowItWorks() {
   return (
-    <section className="relative overflow-hidden bg-sidebar text-sidebar-foreground">
-      {/* Illustration en fond, sous un voile brun pour garder le texte lisible */}
-      <img
-        src={fondCommentCaMarche}
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-        className="pointer-events-none absolute inset-0 size-full select-none object-cover object-[center_30%]"
-      />
-      <div aria-hidden="true" className="absolute inset-0 bg-sidebar/80" />
-      <div className="relative mx-auto max-w-6xl px-4 py-20">
-        <h2 className="text-center font-display text-3xl font-bold sm:text-4xl">
-          Comment ça marche
-        </h2>
-        <ol className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((step, i) => (
-            <li
-              key={step.title}
-              className="relative rounded-3xl border border-sidebar-foreground/15 bg-sidebar/60 p-6 backdrop-blur-md"
-            >
-              <span className="absolute right-5 top-4 font-display text-5xl font-bold text-accent/30">
-                {i + 1}
-              </span>
-              <span className="flex size-11 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-                <step.icon className="size-5" />
-              </span>
-              <h3 className="mt-4 font-semibold">{step.title}</h3>
-              <p className="mt-1 text-sm text-sidebar-foreground/75">{step.text}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+    <section className="mx-auto max-w-6xl px-4 py-16">
+      <h2 className="text-center font-display text-3xl font-bold">Comment ça marche</h2>
+      <ol className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {STEPS.map((step, i) => (
+          <li key={step.title} className="relative rounded-3xl border border-border bg-card p-6">
+            <span className="absolute right-5 top-4 font-display text-5xl font-bold text-accent/15">
+              {i + 1}
+            </span>
+            <span className="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <step.icon className="size-5" />
+            </span>
+            <h3 className="mt-4 font-semibold">{step.title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{step.text}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -356,8 +340,17 @@ function Builder() {
   const dueNow = plan ? (paymentChoice === "moitie" ? halfPrice(plan.price) : plan.price) : 0;
 
   return (
-    <section id="formules" className="scroll-mt-24 bg-cream py-16">
-      <div className="mx-auto max-w-6xl px-4">
+    <section id="formules" className="relative scroll-mt-24 overflow-hidden bg-cream py-16">
+      {/* Illustration en fond sous un voile crème : la page reste lisible, en plus vivant */}
+      <img
+        src={fondComposer}
+        alt=""
+        aria-hidden="true"
+        loading="lazy"
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover object-[center_30%]"
+      />
+      <div aria-hidden="true" className="absolute inset-0 bg-cream/85" />
+      <div className="relative mx-auto max-w-6xl px-4">
         <p className="text-xs font-bold uppercase tracking-widest text-accent">Votre abonnement</p>
         <h2 className="mt-2 font-display text-3xl font-bold sm:text-4xl">
           Composez-le en quatre étapes

@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Clock, MapPin, Menu, MessageCircle, ShoppingBag } from "lucide-react";
-import logo from "@core/assets/logo-ndellis.png";
+import logo from "@core/assets/logo.png";
 import ustensiles from "@/assets/ustensiles-cuisine.webp";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@ui/components/ui/sheet";
 import { useCart } from "@/features/cart/cart-context";
 import { cn } from "@core/lib/utils";
+import { CLIENT, WHATSAPP_URL } from "@/config/client";
 
 const NAV_LINK =
   "rounded-full px-4 py-2 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:text-accent";
@@ -36,7 +37,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         <Link to="/" className="flex min-w-0 items-center gap-2.5">
           <img
             src={logo}
-            alt="Le Ndelli's NDS Traiteur"
+            alt={CLIENT.legalName}
             width={256}
             height={256}
             className="size-11 shrink-0 rounded-full bg-white object-cover ring-2 ring-accent/60 sm:size-12"
@@ -157,7 +158,7 @@ export function SiteFooter() {
           <Link to="/" className="flex items-center gap-3">
             <img
               src={logo}
-              alt="Le Ndelli's NDS Traiteur"
+              alt={CLIENT.legalName}
               width={256}
               height={256}
               loading="lazy"
@@ -206,18 +207,18 @@ export function SiteFooter() {
           <ul className="mt-4 space-y-3 text-sm text-sidebar-foreground/75">
             <li>
               <a
-                href="https://wa.me/221781867272"
+                href={WHATSAPP_URL}
                 target="_blank"
                 rel="noreferrer"
                 className={cn(FOOTER_LINK, "flex items-center gap-2")}
               >
                 <MessageCircle className="size-4 shrink-0 text-accent" aria-hidden="true" />
-                WhatsApp : 78 186 72 72
+                WhatsApp : {CLIENT.whatsappDisplay}
               </a>
             </li>
             <li className="flex items-center gap-2">
               <MapPin className="size-4 shrink-0 text-accent" aria-hidden="true" />
-              Livraison à Dakar
+              Livraison à {CLIENT.city}
             </li>
           </ul>
         </div>
@@ -236,7 +237,9 @@ export function SiteFooter() {
 
       <div className="relative border-t border-sidebar-foreground/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-sidebar-foreground/60 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} Le Ndelli's NDS Traiteur. Tous droits réservés.</p>
+          <p>
+            © {new Date().getFullYear()} {CLIENT.legalName}. Tous droits réservés.
+          </p>
           <p>
             Site réalisé par{" "}
             <a href="mailto:aishaseye074@gmail.com" className="hover:text-sidebar-foreground">

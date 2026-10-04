@@ -1,4 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
+import { CLIENT } from "@/config/client";
 
 const BASE = "https://app.paydunya.com/api/v1";
 
@@ -36,7 +37,7 @@ export async function createInvoice(input: {
     headers: headers(),
     body: JSON.stringify({
       invoice: { total_amount: input.amount, description: input.description },
-      store: { name: "Ndelli's Traiteur" },
+      store: { name: CLIENT.name },
       actions: {
         cancel_url: `${input.origin}${input.cancelPath ?? "/commande?paiement=annule"}`,
         return_url: `${input.origin}${input.returnPath ?? "/confirmation"}`,

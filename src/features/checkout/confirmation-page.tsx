@@ -6,6 +6,7 @@ import { Button } from "@ui/components/ui/button";
 import { formatDay, formatPrice } from "@core/lib/format";
 import { useServerFn } from "@tanstack/react-start";
 import { checkPayment } from "@/features/payment/paydunya.functions";
+import { CLIENT } from "@/config/client";
 
 type StoredOrder = {
   reference: string;
@@ -77,7 +78,7 @@ export function ConfirmationPage() {
                     ? "Paiement PayDunya confirmé. Merci !"
                     : payStatus === "pending"
                       ? "Paiement en attente de confirmation. Nous vous tiendrons informé."
-                      : "Le paiement n'a pas abouti. Contactez-nous sur WhatsApp au 78 186 72 72."}
+                      : `Le paiement n'a pas abouti. Contactez-nous sur WhatsApp au ${CLIENT.whatsappDisplay}.`}
               </p>
             )}
 

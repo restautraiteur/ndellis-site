@@ -1,4 +1,5 @@
 import { db } from "@core/lib/db";
+import { CLIENT } from "@/config/client";
 
 export type PlaceOrderPayload = {
   customer: {
@@ -34,6 +35,6 @@ export async function placeOrder(payload: PlaceOrderPayload) {
   };
 }
 
-export const PAYMENT_NUMBER = "78 186 72 72";
+export const PAYMENT_NUMBER = CLIENT.whatsappDisplay;
 
 export const DEPOSIT_AMOUNT = 1500;

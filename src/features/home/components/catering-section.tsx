@@ -1,6 +1,7 @@
 import { Heart, Cake, Briefcase, PartyPopper, MessageCircle, type LucideIcon } from "lucide-react";
 import traiteurBuffet from "@/assets/traiteur-buffet.jpg";
 import { Button } from "@ui/components/ui/button";
+import { CLIENT, WHATSAPP_URL } from "@/config/client";
 
 const EVENT_TYPES: { icon: LucideIcon; label: string }[] = [
   { icon: Heart, label: "Mariages" },
@@ -41,7 +42,7 @@ export function CateringEventsSection() {
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Button asChild size="lg" className="rounded-full">
               <a
-                href="https://wa.me/221781867272"
+                href={WHATSAPP_URL}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Demander un devis sur WhatsApp"
@@ -51,7 +52,7 @@ export function CateringEventsSection() {
               </a>
             </Button>
             <p className="text-sm font-semibold text-sidebar-foreground/90">
-              WhatsApp : <span className="text-accent">78 186 72 72</span>
+              WhatsApp : <span className="text-accent">{CLIENT.whatsappDisplay}</span>
             </p>
           </div>
         </div>

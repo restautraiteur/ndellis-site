@@ -8,7 +8,7 @@ export function CartBar() {
   const { count, total } = useCart();
   if (count === 0) return null;
   return (
-    <div className="no-print sticky bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
+    <div className="no-print sticky bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <div className="text-sm">
           <p className="font-semibold">

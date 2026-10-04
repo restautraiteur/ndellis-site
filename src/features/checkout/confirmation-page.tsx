@@ -11,6 +11,9 @@ import { CLIENT } from "@/config/client";
 type StoredOrder = {
   reference: string;
   total: number;
+  order_type?: string;
+  /** Précommande : somme payée maintenant (le reste à la livraison). */
+  deposit_required?: number;
   customer: {
     first_name: string;
     last_name: string;
@@ -128,6 +131,18 @@ export function ConfirmationPage() {
               <span>{order.subscription ? "Total payé" : "Total"}</span>
               <span>{formatPrice(order.total)}</span>
             </div>
+            {order.order_type === "precommande" && (order.deposit_required ?? 0) > 0 && (
+              <dl className="mt-2 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Payé maintenant</dt>
+                  <dd className="font-medium">{formatPrice(order.deposit_required ?? 0)}</dd>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <dt>Reste à payer à la livraison</dt>
+                  <dd>{formatPrice(order.total - (order.deposit_required ?? 0))}</dd>
+                </div>
+              </dl>
+            )}
 
             <p className="mt-6 rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
               Rappel : cette précommande est non remboursable. Nous vous contacterons au numéro

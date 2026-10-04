@@ -37,6 +37,9 @@ const STORAGE_KEY = "traiteur.cart.v1";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  // On n'enregistre qu'après avoir relu le panier : sinon le panier vide du premier affichage
+  // écraserait celui que le client avait déjà rempli.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -45,15 +48,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
       /* ignore */
     }
-  }, [items]);
+  }, [items, loaded]);
 
   const add = useCallback((item: Omit<CartItem, "quantity">, quantity = 1) => {
     setItems((prev) => {

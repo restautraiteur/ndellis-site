@@ -14,6 +14,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { DEPOSIT_AMOUNT, placeOrder } from "@/features/checkout/api";
 import { JuiceSuggestions } from "@/features/checkout/juice-suggestions";
 import fondCommande from "@/assets/fond-composer-abonnement.jpg";
+import decoAil from "@/assets/deco-ail.webp";
+import decoPoivre from "@/assets/deco-poivre.webp";
+import { Decoration } from "@/components/decoration";
 import { isCancelledError } from "@core/lib/db";
 import { publicMenuQuery } from "@core/domain/menu/api";
 import { juiceCatalogQuery } from "@core/domain/juices/api";
@@ -88,10 +91,50 @@ export function CheckoutPage() {
     onSuccess: setSubCheck,
     onError: (error: Error) => toast.error(error.message),
   });
-  const coveredDays = subCheck?.ok ? subCheck.days.filter((d) => d.covered).map((d) => d.date) : [];
+  const coveredDays = useMemo(
+    () => (subCheck?.ok ? subCheck.days.filter((d) => d.covered).map((d) => d.date) : []),
+    [subCheck],
+  );
   const discount = coveredDays.reduce((sum, day) => sum + (platPriceByDay.get(day) ?? 0), 0);
   const payable = total - discount;
-  const deposit = isPreorder && payable > 0 ? Math.min(DEPOSIT_AMOUNT, payable) : 0;
+  // À payer maintenant (même calcul que la base) : plats du jour en entier, plats des jours suivants
+  // 1 500 F chacun ; les jus suivent le premier jour de livraison. Le reste se paie à la livraison.
+  const due = useMemo(() => {
+    let todayAmount = 0;
+    let preorderAmount = 0;
+    let preorderPlates = 0;
+    let firstDay: string | null = null;
+    let juices = 0;
+    for (const item of items) {
+      if (item.source === "jus") {
+        juices += item.price * item.quantity;
+        continue;
+      }
+      if (item.day_date && (!firstDay || item.day_date < firstDay)) firstDay = item.day_date;
+      if (item.day_date && item.day_date > today) {
+        preorderAmount += Math.min(DEPOSIT_AMOUNT, item.price) * item.quantity;
+        preorderPlates += item.quantity;
+      } else {
+        todayAmount += item.price * item.quantity;
+      }
+    }
+    for (const day of coveredDays) {
+      const price = platPriceByDay.get(day) ?? 0;
+      if (day > today) {
+        preorderAmount -= Math.min(DEPOSIT_AMOUNT, price);
+        preorderPlates -= 1;
+      } else todayAmount -= price;
+    }
+    const juicesNow = !firstDay || firstDay <= today ? juices : 0;
+    const now =
+      payable <= 0
+        ? 0
+        : isPreorder
+          ? Math.max(todayAmount + preorderAmount + juicesNow, Math.min(DEPOSIT_AMOUNT, payable))
+          : payable;
+    return { now, todayAmount, preorderAmount, preorderPlates, juicesNow, later: payable - now };
+  }, [items, coveredDays, platPriceByDay, today, isPreorder, payable]);
+  const deposit = isPreorder ? due.now : 0;
 
   // Plats regroupés par jour du menu, puis les jus du catalogue (clé `null`) en dernier.
   const grouped = useMemo(() => {
@@ -171,10 +214,7 @@ export function CheckoutPage() {
         total: result?.total ?? pending?.total ?? total,
         order_type:
           result?.order_type ?? pending?.order_type ?? (isPreorder ? "precommande" : "immediate"),
-        deposit_required:
-          result?.deposit_required ??
-          pending?.deposit_required ??
-          (isPreorder ? DEPOSIT_AMOUNT : 0),
+        deposit_required: result?.deposit_required ?? pending?.deposit_required ?? deposit,
         customer: form,
         items: items.map((i) => ({ ...i })),
         subscription: result?.subscription ?? null,
@@ -254,288 +294,332 @@ export function CheckoutPage() {
           </p>
         </div>
       </section>
-      <main className="relative mx-auto -mt-16 max-w-5xl px-4 pb-10">
-        {items.length === 0 ? (
-          <div className="surface-card p-10 text-center">
-            <p className="text-muted-foreground">Votre panier est vide.</p>
-            <Button asChild className="mt-4">
-              <Link to="/">Voir le menu</Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-            <div className="space-y-6">
-              {grouped.map(([day, dayItems]) => (
-                <section key={day ?? "jus"} className="surface-card p-4">
+      {/* Fond beige décoré (ail et poivre) derrière le panier et le formulaire */}
+      <div className="relative -mt-16 overflow-hidden">
+        <Decoration
+          src={decoPoivre}
+          className="-right-12 top-40 hidden w-44 lg:block xl:w-56"
+          rotate="12deg"
+        />
+        <Decoration
+          src={decoAil}
+          className="-left-10 bottom-10 hidden w-40 lg:block xl:w-52"
+          rotate="-10deg"
+        />
+        <main className="relative mx-auto max-w-6xl px-4 pb-16">
+          {items.length === 0 ? (
+            <div className="surface-card p-10 text-center">
+              <p className="text-muted-foreground">Votre panier est vide.</p>
+              <Button asChild className="mt-4">
+                <Link to="/">Voir le menu</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+              <div className="min-w-0 space-y-6">
+                {grouped.map(([day, dayItems]) => (
+                  <section key={day ?? "jus"} className="surface-card p-4">
+                    <h2 className="font-display text-lg font-bold text-primary">
+                      {day ? formatDay(day) : "Jus"}
+                    </h2>
+                    <ul className="mt-3 divide-y divide-border">
+                      {dayItems.map((item) => (
+                        <li key={item.id} className="flex items-center justify-between gap-3 py-3">
+                          <div>
+                            <p className="font-semibold">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatPrice(item.price)} l'unité
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Retirer une unité"
+                              onClick={() => setQuantity(item.id, item.quantity - 1)}
+                            >
+                              <Minus className="size-4" />
+                            </Button>
+                            <span className="w-6 text-center font-semibold">{item.quantity}</span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Ajouter une unité"
+                              onClick={() => setQuantity(item.id, item.quantity + 1)}
+                            >
+                              <Plus className="size-4" />
+                            </Button>
+                            <span className="w-24 text-right font-semibold">
+                              {formatPrice(item.price * item.quantity)}
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Supprimer"
+                              onClick={() => remove(item.id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+
+                {!items.some((i) => i.source === "jus") && <JuiceSuggestions />}
+
+                {unavailable.length > 0 && (
+                  <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                    Désolé, ces produits ne sont plus disponibles en quantité suffisante :{" "}
+                    {unavailable.map((i) => i.name).join(", ")}. Veuillez ajuster votre panier.
+                  </div>
+                )}
+
+                <section className="surface-card space-y-4 p-4">
                   <h2 className="font-display text-lg font-bold text-primary">
-                    {day ? formatDay(day) : "Jus"}
+                    Informations de livraison
                   </h2>
-                  <ul className="mt-3 divide-y divide-border">
-                    {dayItems.map((item) => (
-                      <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                        <div>
-                          <p className="font-semibold">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatPrice(item.price)} l'unité
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      id="last_name"
+                      label="Nom *"
+                      value={form.last_name}
+                      error={errors["last_name"]}
+                      onChange={(v) => setForm({ ...form, last_name: v })}
+                    />
+                    <Field
+                      id="first_name"
+                      label="Prénom *"
+                      value={form.first_name}
+                      error={errors["first_name"]}
+                      onChange={(v) => setForm({ ...form, first_name: v })}
+                    />
+                    <Field
+                      id="phone"
+                      label="Téléphone *"
+                      value={form.phone}
+                      error={errors["phone"]}
+                      onChange={(v) => setForm({ ...form, phone: v })}
+                    />
+                    <Field
+                      id="address"
+                      label="Adresse de livraison *"
+                      value={form.address}
+                      error={errors["address"]}
+                      onChange={(v) => setForm({ ...form, address: v })}
+                    />
+                    <Field
+                      id="address_extra"
+                      label="Complément d'adresse"
+                      value={form.address_extra}
+                      onChange={(v) => setForm({ ...form, address_extra: v })}
+                    />
+                    <Field
+                      id="landmark"
+                      label="Point de repère"
+                      value={form.landmark}
+                      onChange={(v) => setForm({ ...form, landmark: v })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="instructions">Instructions de livraison</Label>
+                    <Textarea
+                      id="instructions"
+                      maxLength={500}
+                      value={form.instructions}
+                      onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+                    />
+                  </div>
+                </section>
+
+                {CLIENT.subscriptions && (
+                  <section className="surface-card space-y-3 p-4">
+                    <h2 className="flex items-center gap-2 font-display text-lg font-bold text-primary">
+                      <KeyRound className="size-5" /> Vous êtes abonné ?
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Entrez votre code abonné (avec le téléphone ci-dessus) : un plat par jour, du
+                      lundi au vendredi, est compté sur votre abonnement.
+                    </p>
+                    <form
+                      className="flex flex-wrap gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (/^\d{4}$/.test(subPin) && form.phone.replace(/\D/g, "").length >= 7)
+                          verifySub.mutate();
+                      }}
+                    >
+                      <Input
+                        className="w-36"
+                        placeholder="Code à 4 chiffres"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={subPin}
+                        onChange={(e) => {
+                          setSubPin(e.target.value.replace(/\D/g, ""));
+                          setSubCheck(null);
+                        }}
+                      />
+                      <Button
+                        type="submit"
+                        variant="secondary"
+                        disabled={
+                          !/^\d{4}$/.test(subPin) ||
+                          form.phone.replace(/\D/g, "").length < 7 ||
+                          verifySub.isPending
+                        }
+                      >
+                        {verifySub.isPending ? "Vérification…" : "Utiliser mon abonnement"}
+                      </Button>
+                    </form>
+                    {form.phone.replace(/\D/g, "").length < 7 && subPin.length === 4 && (
+                      <p className="text-xs text-muted-foreground">
+                        Indiquez d'abord votre téléphone dans les informations de livraison.
+                      </p>
+                    )}
+                    {subCheck && !subCheck.ok && (
+                      <p className="text-sm text-destructive">{subCheck.error}</p>
+                    )}
+                    {subCheck?.ok && (
+                      <div className="space-y-2 rounded-lg bg-success/10 p-3 text-sm">
+                        <p className="font-semibold">
+                          {subCheck.customer_name} · {subCheck.plan_name} · {subCheck.remaining}{" "}
+                          repas restant{subCheck.remaining > 1 ? "s" : ""}
+                        </p>
+                        {subCheck.days.length === 0 && (
+                          <p>Ajoutez un plat du jour au panier pour utiliser votre abonnement.</p>
+                        )}
+                        <ul className="space-y-1">
+                          {subCheck.days.map((d) => (
+                            <li key={d.date}>
+                              {d.covered ? "✅" : "⛔"} {formatDay(d.date)} :{" "}
+                              {d.covered ? "1 plat compté sur l'abonnement" : d.reason}
+                            </li>
+                          ))}
+                        </ul>
+                        {coveredDays.length > 0 && (
+                          <p className="text-muted-foreground">
+                            Après cette commande, il vous restera {subCheck.remaining_after} repas.
                           </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Retirer une unité"
-                            onClick={() => setQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="size-4" />
-                          </Button>
-                          <span className="w-6 text-center font-semibold">{item.quantity}</span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Ajouter une unité"
-                            onClick={() => setQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="size-4" />
-                          </Button>
-                          <span className="w-24 text-right font-semibold">
-                            {formatPrice(item.price * item.quantity)}
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Supprimer"
-                            onClick={() => remove(item.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+
+              <aside className="lg:sticky lg:top-24 lg:self-start">
+                <div className="surface-card space-y-5 p-5 sm:p-7">
+                  <h2 className="font-display text-2xl font-bold text-primary">Récapitulatif</h2>
+                  <ul className="space-y-2.5 text-base">
+                    {items.map((item) => (
+                      <li key={item.id} className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">
+                          {item.quantity} × {item.name}
+                        </span>
+                        <span className="font-medium">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                </section>
-              ))}
-
-              {!items.some((i) => i.source === "jus") && <JuiceSuggestions />}
-
-              {unavailable.length > 0 && (
-                <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                  Désolé, ces produits ne sont plus disponibles en quantité suffisante :{" "}
-                  {unavailable.map((i) => i.name).join(", ")}. Veuillez ajuster votre panier.
-                </div>
-              )}
-
-              <section className="surface-card space-y-4 p-4">
-                <h2 className="font-display text-lg font-bold text-primary">
-                  Informations de livraison
-                </h2>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field
-                    id="last_name"
-                    label="Nom *"
-                    value={form.last_name}
-                    error={errors["last_name"]}
-                    onChange={(v) => setForm({ ...form, last_name: v })}
-                  />
-                  <Field
-                    id="first_name"
-                    label="Prénom *"
-                    value={form.first_name}
-                    error={errors["first_name"]}
-                    onChange={(v) => setForm({ ...form, first_name: v })}
-                  />
-                  <Field
-                    id="phone"
-                    label="Téléphone *"
-                    value={form.phone}
-                    error={errors["phone"]}
-                    onChange={(v) => setForm({ ...form, phone: v })}
-                  />
-                  <Field
-                    id="address"
-                    label="Adresse de livraison *"
-                    value={form.address}
-                    error={errors["address"]}
-                    onChange={(v) => setForm({ ...form, address: v })}
-                  />
-                  <Field
-                    id="address_extra"
-                    label="Complément d'adresse"
-                    value={form.address_extra}
-                    onChange={(v) => setForm({ ...form, address_extra: v })}
-                  />
-                  <Field
-                    id="landmark"
-                    label="Point de repère"
-                    value={form.landmark}
-                    onChange={(v) => setForm({ ...form, landmark: v })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="instructions">Instructions de livraison</Label>
-                  <Textarea
-                    id="instructions"
-                    maxLength={500}
-                    value={form.instructions}
-                    onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-                  />
-                </div>
-              </section>
-
-              {CLIENT.subscriptions && (
-                <section className="surface-card space-y-3 p-4">
-                  <h2 className="flex items-center gap-2 font-display text-lg font-bold text-primary">
-                    <KeyRound className="size-5" /> Vous êtes abonné ?
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Entrez votre code abonné (avec le téléphone ci-dessus) : un plat par jour, du
-                    lundi au vendredi, est compté sur votre abonnement.
-                  </p>
-                  <form
-                    className="flex flex-wrap gap-2"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (/^\d{4}$/.test(subPin) && form.phone.replace(/\D/g, "").length >= 7)
-                        verifySub.mutate();
-                    }}
-                  >
-                    <Input
-                      className="w-36"
-                      placeholder="Code à 4 chiffres"
-                      inputMode="numeric"
-                      maxLength={4}
-                      value={subPin}
-                      onChange={(e) => {
-                        setSubPin(e.target.value.replace(/\D/g, ""));
-                        setSubCheck(null);
-                      }}
-                    />
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      disabled={
-                        !/^\d{4}$/.test(subPin) ||
-                        form.phone.replace(/\D/g, "").length < 7 ||
-                        verifySub.isPending
-                      }
-                    >
-                      {verifySub.isPending ? "Vérification…" : "Utiliser mon abonnement"}
-                    </Button>
-                  </form>
-                  {form.phone.replace(/\D/g, "").length < 7 && subPin.length === 4 && (
-                    <p className="text-xs text-muted-foreground">
-                      Indiquez d'abord votre téléphone dans les informations de livraison.
-                    </p>
-                  )}
-                  {subCheck && !subCheck.ok && (
-                    <p className="text-sm text-destructive">{subCheck.error}</p>
-                  )}
-                  {subCheck?.ok && (
-                    <div className="space-y-2 rounded-lg bg-success/10 p-3 text-sm">
-                      <p className="font-semibold">
-                        {subCheck.customer_name} · {subCheck.plan_name} · {subCheck.remaining} repas
-                        restant{subCheck.remaining > 1 ? "s" : ""}
-                      </p>
-                      {subCheck.days.length === 0 && (
-                        <p>Ajoutez un plat du jour au panier pour utiliser votre abonnement.</p>
-                      )}
-                      <ul className="space-y-1">
-                        {subCheck.days.map((d) => (
-                          <li key={d.date}>
-                            {d.covered ? "✅" : "⛔"} {formatDay(d.date)} :{" "}
-                            {d.covered ? "1 plat compté sur l'abonnement" : d.reason}
-                          </li>
-                        ))}
-                      </ul>
-                      {coveredDays.length > 0 && (
-                        <p className="text-muted-foreground">
-                          Après cette commande, il vous restera {subCheck.remaining_after} repas.
-                        </p>
-                      )}
+                  {discount > 0 && (
+                    <div className="flex justify-between text-sm text-success">
+                      <span>Abonnement ({coveredDays.length} repas)</span>
+                      <span className="font-medium">− {formatPrice(discount)}</span>
                     </div>
                   )}
-                </section>
-              )}
+                  <div className="flex justify-between border-t border-border pt-4 text-2xl font-bold">
+                    <span>Total</span>
+                    <span>{formatPrice(payable)}</span>
+                  </div>
+
+                  {payable === 0 ? (
+                    <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
+                      Rien à payer : votre commande est entièrement comptée sur votre abonnement.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-semibold text-primary">À payer maintenant</span>
+                        <span className="text-2xl font-bold text-primary">
+                          {formatPrice(due.now)}
+                        </span>
+                      </div>
+                      {isPreorder && (
+                        <ul className="space-y-1 text-sm text-muted-foreground">
+                          {due.todayAmount > 0 && (
+                            <li className="flex justify-between gap-3">
+                              <span>Plats d'aujourd'hui (en entier)</span>
+                              <span>{formatPrice(due.todayAmount)}</span>
+                            </li>
+                          )}
+                          {due.preorderPlates > 0 && (
+                            <li className="flex justify-between gap-3">
+                              <span>
+                                Acompte précommande : {due.preorderPlates} plat
+                                {due.preorderPlates > 1 ? "s" : ""} × {formatPrice(DEPOSIT_AMOUNT)}
+                              </span>
+                              <span>{formatPrice(due.preorderAmount)}</span>
+                            </li>
+                          )}
+                          {due.juicesNow > 0 && (
+                            <li className="flex justify-between gap-3">
+                              <span>Jus (livrés aujourd'hui)</span>
+                              <span>{formatPrice(due.juicesNow)}</span>
+                            </li>
+                          )}
+                          <li className="flex justify-between gap-3 border-t border-border pt-1 font-semibold text-foreground">
+                            <span>Reste à payer à la livraison</span>
+                            <span>{formatPrice(due.later)}</span>
+                          </li>
+                        </ul>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
+                        bancaire.
+                        {isPreorder && " L'acompte n'est pas remboursable."}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
+                    <strong>Important :</strong> toute commande validée est non remboursable.
+                  </div>
+
+                  <label className="flex items-start gap-3 text-sm">
+                    <Checkbox
+                      checked={accepted}
+                      onCheckedChange={(checked) => setAccepted(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      J'ai pris connaissance et j'accepte que ma commande (et l'acompte de{" "}
+                      {formatPrice(DEPOSIT_AMOUNT)} par plat précommandé) soit non remboursable.
+                    </span>
+                  </label>
+
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    disabled={!accepted || mutation.isPending}
+                    onClick={submit}
+                  >
+                    {mutation.isPending
+                      ? payable === 0
+                        ? "Validation…"
+                        : "Redirection vers le paiement…"
+                      : payable === 0
+                        ? "Valider ma commande"
+                        : `Payer ${formatPrice(due.now)}`}
+                  </Button>
+                </div>
+              </aside>
             </div>
-
-            <aside className="lg:sticky lg:top-24 lg:self-start">
-              <div className="surface-card space-y-4 p-5">
-                <h2 className="font-display text-lg font-bold text-primary">Récapitulatif</h2>
-                <ul className="space-y-2 text-sm">
-                  {items.map((item) => (
-                    <li key={item.id} className="flex justify-between gap-3">
-                      <span className="text-muted-foreground">
-                        {item.quantity} × {item.name}
-                      </span>
-                      <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
-                    </li>
-                  ))}
-                </ul>
-                {discount > 0 && (
-                  <div className="flex justify-between text-sm text-success">
-                    <span>Abonnement ({coveredDays.length} repas)</span>
-                    <span className="font-medium">− {formatPrice(discount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-border pt-3 text-lg font-bold">
-                  <span>Total</span>
-                  <span>{formatPrice(payable)}</span>
-                </div>
-
-                {payable === 0 ? (
-                  <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
-                    Rien à payer : votre commande est entièrement comptée sur votre abonnement.
-                  </div>
-                ) : (
-                  <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                    <p className="font-semibold text-primary">
-                      {deposit > 0
-                        ? `À payer maintenant : acompte de ${formatPrice(deposit)}`
-                        : `À payer maintenant : ${formatPrice(payable)}`}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
-                      bancaire.
-                      {deposit > 0 &&
-                        ` L'acompte de ${formatPrice(deposit)} n'est pas remboursable ; le reste est réglé à la livraison.`}
-                    </p>
-                  </div>
-                )}
-
-                <div className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
-                  <strong>Important :</strong> toute commande validée est non remboursable.
-                </div>
-
-                <label className="flex items-start gap-3 text-sm">
-                  <Checkbox
-                    checked={accepted}
-                    onCheckedChange={(checked) => setAccepted(checked === true)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    J'ai pris connaissance et j'accepte que ma commande (et l'acompte de 1 500 FCFA
-                    pour une précommande) soit non remboursable.
-                  </span>
-                </label>
-
-                <Button
-                  className="w-full"
-                  size="lg"
-                  disabled={!accepted || mutation.isPending}
-                  onClick={submit}
-                >
-                  {mutation.isPending
-                    ? payable === 0
-                      ? "Validation…"
-                      : "Redirection vers le paiement…"
-                    : payable === 0
-                      ? "Valider ma commande"
-                      : "Payer avec PayDunya"}
-                </Button>
-              </div>
-            </aside>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
       <SiteFooter />
     </div>
   );

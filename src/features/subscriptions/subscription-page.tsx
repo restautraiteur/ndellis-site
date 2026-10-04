@@ -169,34 +169,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative mx-auto hidden h-[440px] w-full max-w-md sm:block">
-          <img
-            src={fonioCrevettes}
-            alt="Barquettes de fonio aux crevettes"
-            className="absolute left-0 top-6 h-80 w-60 -rotate-[5deg] rounded-[2rem] object-cover shadow-2xl ring-4 ring-sidebar-foreground/10"
-          />
-          <img
-            src={platPoisson}
-            alt="Barquettes de poisson, riz et alloco"
-            loading="lazy"
-            className="absolute right-0 top-0 h-56 w-44 rotate-[6deg] rounded-[2rem] object-cover shadow-2xl ring-4 ring-sidebar-foreground/10"
-          />
-          <img
-            src={platPoulet}
-            alt="Barquettes de poulet grillé et crudités"
-            loading="lazy"
-            className="absolute bottom-0 right-6 h-52 w-48 -rotate-[2deg] rounded-[2rem] object-cover shadow-2xl ring-4 ring-sidebar-foreground/10"
-          />
-          <div className="absolute bottom-10 left-6 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 text-foreground shadow-xl">
-            <span className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
-              <UtensilsCrossed className="size-5" />
-            </span>
-            <span className="text-sm leading-tight">
-              <span className="block font-bold">Lundi → vendredi</span>
-              <span className="text-xs text-muted-foreground">un plat chaud chaque midi</span>
-            </span>
-          </div>
-        </div>
+        <HeroCollage />
       </div>
     </section>
   );
@@ -224,6 +197,68 @@ const STEPS = [
     text: "Choisissez le plat du jour qui vous tente, entrez votre code : rien à payer. Un jour sauté est reporté.",
   },
 ];
+
+/**
+ * Composition du haut de page : photo principale en arche sur un disque orangé, deux photos rondes
+ * qui la chevauchent, anneau pointillé, motif de points et deux étiquettes.
+ */
+function HeroCollage() {
+  return (
+    <div className="relative mx-auto h-[380px] w-full max-w-[22rem] sm:h-[460px] sm:max-w-md">
+      <div
+        aria-hidden="true"
+        className="absolute right-0 top-4 h-40 w-40 opacity-25"
+        style={{
+          backgroundImage: "radial-gradient(currentColor 1.5px, transparent 1.5px)",
+          backgroundSize: "16px 16px",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute left-1/2 top-1/2 aspect-square w-[92%] -translate-x-1/2 -translate-y-1/2"
+      >
+        <div className="absolute -inset-4 animate-[spin_50s_linear_infinite] rounded-full border-2 border-dashed border-accent/35 motion-reduce:animate-none" />
+        <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f6a26b,var(--accent)_60%,#a8431b)] opacity-90" />
+      </div>
+
+      {/* photo principale en arche */}
+      <img
+        src={fonioCrevettes}
+        alt="Barquettes de fonio aux crevettes"
+        className="absolute left-1/2 top-1/2 h-[78%] w-[52%] -translate-x-1/2 -translate-y-1/2 rounded-b-[1.75rem] rounded-t-full object-cover shadow-2xl ring-[6px] ring-sidebar"
+      />
+      {/* photos rondes qui chevauchent l'arche */}
+      <img
+        src={platPoisson}
+        alt="Barquettes de poisson, riz et alloco"
+        loading="lazy"
+        className="absolute left-0 top-[14%] size-28 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-36"
+      />
+      <img
+        src={platPoulet}
+        alt="Barquettes de poulet grillé et crudités"
+        loading="lazy"
+        className="absolute bottom-[10%] right-0 size-28 rounded-full object-cover shadow-xl ring-[5px] ring-sidebar sm:size-36"
+      />
+
+      <div className="deco-float absolute bottom-2 left-0 flex items-center gap-3 rounded-2xl bg-card px-4 py-3 text-foreground shadow-xl sm:bottom-6">
+        <span className="flex size-10 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <UtensilsCrossed className="size-5" />
+        </span>
+        <span className="text-sm leading-tight">
+          <span className="block font-bold">Lundi → vendredi</span>
+          <span className="text-xs text-muted-foreground">un plat chaud chaque midi</span>
+        </span>
+      </div>
+      <div className="absolute right-2 top-0 flex items-center gap-2 rounded-full bg-card py-1.5 pl-1.5 pr-3 text-xs font-semibold text-foreground shadow-xl sm:right-6">
+        <span className="flex size-7 items-center justify-center rounded-full bg-success text-white">
+          <Truck className="size-3.5" />
+        </span>
+        Livré chaque midi
+      </div>
+    </div>
+  );
+}
 
 function HowItWorks() {
   return (
@@ -355,7 +390,7 @@ function Builder() {
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-b from-sidebar/90 via-sidebar/75 to-sidebar/90"
+        className="absolute inset-0 bg-gradient-to-b from-sidebar/95 via-sidebar/85 to-sidebar/95"
       />
       <div className="relative mx-auto max-w-6xl px-4">
         <p className="text-xs font-bold uppercase tracking-widest text-accent">Votre abonnement</p>
@@ -820,24 +855,24 @@ function Tracking() {
       id="suivi"
       className="mx-auto grid max-w-6xl scroll-mt-24 items-start gap-10 px-4 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
     >
-      {/* Illustration : la semaine cochée, le repas savouré, le livreur */}
-      <div className="relative mx-auto w-full max-w-sm lg:sticky lg:top-28 lg:max-w-none">
+      {/* Illustration : le tableau « Mon abonnement » et une abonnée qui savoure son repas */}
+      <div className="relative mx-auto w-full max-w-md lg:sticky lg:top-28 lg:max-w-none">
         <div
           aria-hidden="true"
-          className="absolute -inset-3 -rotate-2 rounded-[2.25rem] border-2 border-dashed border-accent/40"
+          className="absolute left-1/2 top-1/2 aspect-square w-[85%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/10"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute left-1/2 top-1/2 aspect-square w-[98%] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-accent/25"
         />
         <img
           src={suiviRepas}
-          alt="Une abonnée savoure son repas : sa semaine est cochée et le livreur arrive avec la commande"
+          alt="Le suivi « Mon abonnement » : repas livrés, repas restants et reste à régler, à côté d'une abonnée qui savoure son repas"
           loading="lazy"
-          width={800}
-          height={839}
-          className="relative aspect-[4/5] w-full rounded-[2rem] object-cover object-top shadow-warm lg:aspect-[800/839]"
+          width={960}
+          height={826}
+          className="relative w-full drop-shadow-[0_24px_30px_rgba(60,35,15,0.25)]"
         />
-        <div className="absolute -bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-card px-4 py-2 text-sm font-semibold shadow-xl">
-          <Check className="size-4 rounded-full bg-success p-0.5 text-white" /> Repas livré, il en
-          reste 13
-        </div>
       </div>
 
       <div>

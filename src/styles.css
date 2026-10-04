@@ -37,6 +37,8 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-cream: var(--cream);
+  --color-wine: var(--wine);
+  --color-wine-foreground: var(--wine-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -82,6 +84,9 @@
   --success: oklch(0.55 0.11 145);
   --success-foreground: oklch(0.985 0.01 84);
   --cream: oklch(0.955 0.022 82);
+  /* Seconde couleur de la marque : bordeaux */
+  --wine: #8e1b3a;
+  --wine-foreground: oklch(0.97 0.015 84);
   --border: oklch(0.88 0.022 78);
   --input: oklch(0.88 0.022 78);
   --ring: oklch(0.62 0.14 42);
@@ -120,6 +125,8 @@
   --success: oklch(0.62 0.12 145);
   --success-foreground: oklch(0.16 0.02 55);
   --cream: oklch(0.28 0.03 55);
+  --wine: #8e1b3a;
+  --wine-foreground: oklch(0.97 0.015 84);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.62 0.14 42);

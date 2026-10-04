@@ -12,6 +12,8 @@ type StoredOrder = {
   reference: string;
   total: number;
   order_type?: string;
+  /** Paiement à la livraison (commande du jour) : rien payé en ligne. */
+  pay_on_delivery?: boolean;
   /** Précommande : somme payée maintenant (le reste à la livraison). */
   deposit_required?: number;
   customer: {
@@ -131,6 +133,11 @@ export function ConfirmationPage() {
               <span>{order.subscription ? "Total payé" : "Total"}</span>
               <span>{formatPrice(order.total)}</span>
             </div>
+            {order.pay_on_delivery && (
+              <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                À payer à la livraison : {formatPrice(order.total)} (espèces ou Wave au livreur).
+              </p>
+            )}
             {order.order_type === "precommande" && (order.deposit_required ?? 0) > 0 && (
               <dl className="mt-2 space-y-1 text-sm">
                 <div className="flex justify-between">

@@ -25,6 +25,7 @@ import { useCart } from "@/features/cart/cart-context";
 import { checkSubscription, type SubscriptionCheck } from "@/features/subscriptions/api";
 import { CLIENT } from "@/config/client";
 import { formatDay, formatPrice, todayISO } from "@core/lib/format";
+import { cn } from "@core/lib/utils";
 
 const customerSchema = z.object({
   first_name: z.string().trim().min(2, "Prénom requis").max(80),
@@ -47,6 +48,8 @@ export function CheckoutPage() {
   const { data: menu } = useQuery(publicMenuQuery());
   const { data: juices } = useQuery(juiceCatalogQuery());
   const [accepted, setAccepted] = useState(false);
+  // Commande du jour uniquement : le client peut payer à la livraison (les précommandes gardent l'acompte).
+  const [payMode, setPayMode] = useState<"en_ligne" | "livraison">("en_ligne");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     first_name: "",
@@ -135,6 +138,7 @@ export function CheckoutPage() {
     return { now, todayAmount, preorderAmount, preorderPlates, juicesNow, later: payable - now };
   }, [items, coveredDays, platPriceByDay, today, isPreorder, payable]);
   const deposit = isPreorder ? due.now : 0;
+  const onDelivery = !isPreorder && payable > 0 && payMode === "livraison";
 
   // Plats regroupés par jour du menu, puis les jus du catalogue (clé `null`) en dernier.
   const grouped = useMemo(() => {
@@ -177,6 +181,22 @@ export function CheckoutPage() {
         /* ignore expired data */
       }
       const result = pending?.fingerprint === fingerprint ? null : await placeOrder(payload);
+      if (result && payload.customer.payment_method === "livraison") {
+        // Paiement à la livraison : pas de paiement en ligne, le livreur encaisse.
+        window.sessionStorage.setItem(
+          "traiteur.last_order",
+          JSON.stringify({
+            reference: result.reference,
+            total: result.total,
+            pay_on_delivery: true,
+            customer: form,
+            items: items.map((i) => ({ ...i })),
+            subscription: result.subscription,
+          }),
+        );
+        clear();
+        return "/confirmation";
+      }
       if (result && result.total === 0) {
         // Entièrement pris en charge par l'abonnement : pas de paiement.
         window.sessionStorage.setItem(
@@ -261,6 +281,7 @@ export function CheckoutPage() {
       customer: {
         ...parsed.data,
         ...(subCheck?.ok && coveredDays.length > 0 ? { subscription_pin: subPin } : {}),
+        ...(onDelivery ? { payment_method: "livraison" } : {}),
       },
       items: items.map((i) =>
         i.source === "jus"
@@ -535,9 +556,61 @@ export function CheckoutPage() {
                     <span>{formatPrice(payable)}</span>
                   </div>
 
+                  {!isPreorder && payable > 0 && (
+                    <div role="radiogroup" aria-label="Mode de paiement" className="grid gap-2">
+                      {(
+                        [
+                          ["en_ligne", "Payer en ligne", "Wave, Orange Money, Free Money ou carte"],
+                          [
+                            "livraison",
+                            "Payer à la livraison",
+                            "En espèces ou par Wave au livreur",
+                          ],
+                        ] as const
+                      ).map(([value, title, text]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={payMode === value}
+                          onClick={() => setPayMode(value)}
+                          className={cn(
+                            "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors",
+                            payMode === value
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/40",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "mt-0.5 size-4 shrink-0 rounded-full border-2",
+                              payMode === value ? "border-primary bg-primary" : "border-border",
+                            )}
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold">{title}</span>
+                            <span className="block text-xs text-muted-foreground">{text}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {payable === 0 ? (
                     <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
                       Rien à payer : votre commande est entièrement comptée sur votre abonnement.
+                    </div>
+                  ) : onDelivery ? (
+                    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-semibold text-primary">À payer à la livraison</span>
+                        <span className="text-2xl font-bold text-primary">
+                          {formatPrice(payable)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Rien à payer maintenant : vous réglez le livreur à la réception.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
@@ -607,10 +680,10 @@ export function CheckoutPage() {
                     onClick={submit}
                   >
                     {mutation.isPending
-                      ? payable === 0
+                      ? payable === 0 || onDelivery
                         ? "Validation…"
                         : "Redirection vers le paiement…"
-                      : payable === 0
+                      : payable === 0 || onDelivery
                         ? "Valider ma commande"
                         : `Payer ${formatPrice(due.now)}`}
                   </Button>

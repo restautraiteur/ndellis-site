@@ -60,12 +60,6 @@ function addDays(iso: string, count: number) {
   return date.toISOString().slice(0, 10);
 }
 
-/** Lundi de la semaine d'une date. */
-function mondayOf(iso: string) {
-  const day = parseDate(iso).getUTCDay();
-  return addDays(iso, day === 0 ? -6 : 1 - day);
-}
-
 /** « 5 oct. » */
 function shortDay(iso: string) {
   const d = parseDate(iso);
@@ -461,8 +455,7 @@ function Builder() {
               <div>
                 <StepTitle n={2}>À partir de quand ?</StepTitle>
                 <p className="mt-2 text-sm text-sidebar-foreground/75">
-                  Touchez un jour pour démarrer. Le calendrier montre vos repas si vous mangez
-                  chaque jour ouvré ; un jour sans commande est simplement reporté.
+                  Un jour sans commande n'est pas perdu : le repas est reporté à la fin.
                 </p>
                 <MealCalendar
                   startOptions={startOptions}
@@ -654,9 +647,38 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+const SHORT_WEEKDAYS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+
+/** Pastille d'un jour : jour de la semaine en petit, numéro en grand. */
+function DayTile({
+  iso,
+  className,
+  children,
+}: {
+  iso: string;
+  className?: string;
+  children?: React.ReactNode;
+}) {
+  const date = parseDate(iso);
+  return (
+    <span
+      className={cn(
+        "flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-2xl leading-none",
+        className,
+      )}
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+        {SHORT_WEEKDAYS[date.getUTCDay()]}
+      </span>
+      <span className="mt-1 text-lg font-bold">{date.getUTCDate()}</span>
+      {children}
+    </span>
+  );
+}
+
 /**
- * Calendrier du lundi au vendredi : jours de départ possibles, jours de repas et jours fermés
- * (un jour ouvré sans repas au milieu de l'abonnement est un jour de fermeture, reporté à la fin).
+ * Jour de départ (pastilles qui défilent), puis les jours de repas de la formule. Un jour ouvré
+ * sauté au milieu (fermeture du restaurant) apparaît en pointillés : le repas est reporté à la fin.
  */
 function MealCalendar({
   startOptions,
@@ -669,86 +691,83 @@ function MealCalendar({
   onStart: (iso: string) => void;
   mealDates: string[];
 }) {
-  const first = startOptions[0];
-  const end = mealDates[mealDates.length - 1];
-  const last = [end, startOptions[startOptions.length - 1]].filter(Boolean).sort().pop();
-  if (!first || !last) return <div className="mt-4 h-48 animate-pulse rounded-3xl bg-card" />;
-
-  const meals = new Set(mealDates);
-  const options = new Set(startOptions);
-  const weeks: string[][] = [];
-  for (let monday = mondayOf(first); monday <= last; monday = addDays(monday, 7)) {
-    weeks.push([0, 1, 2, 3, 4].map((i) => addDays(monday, i)));
+  if (startOptions.length === 0) {
+    return <div className="mt-4 h-48 animate-pulse rounded-3xl bg-card" />;
   }
+  const end = mealDates[mealDates.length - 1];
+  // Jours de repas et jours fermés intercalés, dans l'ordre.
+  const tiles: { iso: string; closed: boolean }[] = [];
+  if (mealDates[0] && end) {
+    const meals = new Set(mealDates);
+    for (let day = mealDates[0]; day <= end; day = addDays(day, 1)) {
+      const weekday = parseDate(day).getUTCDay();
+      if (weekday === 0 || weekday === 6) continue;
+      tiles.push({ iso: day, closed: !meals.has(day) });
+    }
+  }
+  const closedCount = tiles.filter((t) => t.closed).length;
 
   return (
-    <div className="mt-4 rounded-3xl bg-card p-4 text-foreground sm:p-5">
-      <div className="grid grid-cols-5 gap-1.5 text-center text-[11px] font-semibold uppercase text-muted-foreground sm:gap-2">
-        {["Lun", "Mar", "Mer", "Jeu", "Ven"].map((d) => (
-          <span key={d}>{d}</span>
-        ))}
-      </div>
-      <div className="mt-2 space-y-1.5 sm:space-y-2">
-        {weeks.map((week) => (
-          <div key={week[0]} className="grid grid-cols-5 gap-1.5 sm:gap-2">
-            {week.map((iso) => {
-              const date = parseDate(iso);
-              const isMeal = meals.has(iso);
-              const closed = !!end && iso > start && iso < end && !isMeal;
-              const selectable = options.has(iso);
-              const showMonth = date.getUTCDate() === 1 || iso === weeks[0]![0];
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  disabled={!selectable}
-                  aria-pressed={iso === start}
-                  onClick={() => onStart(iso)}
-                  title={closed ? "Fermé : repas reporté" : formatDay(iso)}
+    <div className="mt-4 space-y-4">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-sidebar-foreground/70">
+          Je commence le
+        </p>
+        <div className="-mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-2 scrollbar-hide">
+          {startOptions.map((iso) => {
+            const selected = iso === start;
+            return (
+              <button
+                key={iso}
+                type="button"
+                aria-pressed={selected}
+                aria-label={`Commencer le ${formatDay(iso).toLowerCase()}`}
+                onClick={() => onStart(iso)}
+                className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <DayTile
+                  iso={iso}
                   className={cn(
-                    "flex h-12 flex-col items-center justify-center rounded-xl text-sm transition-colors sm:h-14",
-                    isMeal
-                      ? "bg-accent font-bold text-accent-foreground"
-                      : closed
-                        ? "bg-muted text-muted-foreground line-through"
-                        : selectable
-                          ? "border border-border hover:border-accent"
-                          : "text-muted-foreground/40",
-                    iso === start && "ring-2 ring-primary ring-offset-2 ring-offset-card",
-                    !selectable && "cursor-default",
+                    "transition-all",
+                    selected
+                      ? "bg-accent text-accent-foreground shadow-warm"
+                      : "bg-card text-foreground hover:-translate-y-0.5",
                   )}
-                >
-                  {showMonth && (
-                    <span className="text-[9px] font-semibold uppercase leading-none opacity-70">
-                      {SHORT_MONTHS[date.getUTCMonth()]}
-                    </span>
-                  )}
-                  <span>{date.getUTCDate()}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
+                />
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <Legend className="bg-accent" label="Repas (si vous mangez chaque jour)" />
-        <Legend className="ring-2 ring-primary" label="Départ" />
-        <Legend className="bg-muted" label="Fermé, reporté" />
-        {end && (
-          <span className="font-medium text-foreground sm:ml-auto">
-            {mealDates.length} repas, du {shortDay(mealDates[0]!)} au {shortDay(end)}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function Legend({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={cn("size-3 rounded", className)} /> {label}
-    </span>
+      {tiles.length > 0 && end && (
+        <div className="rounded-3xl bg-card p-4 text-foreground sm:p-5">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Vos {mealDates.length} repas
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tiles.map(({ iso, closed }) =>
+              closed ? (
+                <DayTile
+                  key={iso}
+                  iso={iso}
+                  className="border-2 border-dashed border-border text-muted-foreground line-through"
+                />
+              ) : (
+                <DayTile key={iso} iso={iso} className="bg-primary text-primary-foreground" />
+              ),
+            )}
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Du <strong className="text-foreground">{formatDay(mealDates[0]!).toLowerCase()}</strong>{" "}
+            au <strong className="text-foreground">{formatDay(end).toLowerCase()}</strong>, si vous
+            mangez chaque jour ouvré.
+            {closedCount > 0 &&
+              ` ${closedCount} jour${closedCount > 1 ? "s" : ""} de fermeture (en pointillés) : repas reporté${closedCount > 1 ? "s" : ""} à la fin.`}
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

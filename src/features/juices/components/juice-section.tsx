@@ -53,15 +53,16 @@ export function JuiceSection() {
   return (
     <section
       id="jus"
-      className="relative scroll-mt-24 overflow-hidden border-b border-border/70 py-16 sm:py-20 [.abo-zone:has(.abo-cta)+&]:pt-40 lg:[.abo-zone:has(.abo-cta)+&]:pt-52"
+      className="relative scroll-mt-24 overflow-hidden border-b border-border/70 bg-cream py-16 sm:py-20 [.abo-zone:has(.abo-cta)+&]:pt-[calc(var(--abo-overlap,10rem)+4rem)] sm:[.abo-zone:has(.abo-cta)+&]:pt-[calc(var(--abo-overlap,10rem)+5rem)]"
     >
-      {/* fond de fruits : fondu en haut pour enchaîner sans coupure avec le menu, multiply pour garder le fond de la page */}
+      {/* fond de fruits : le blanc de la photo se fond dans le crème (multiply), opacité réduite pour la lisibilité.
+          Le bandeau abonnement chevauche le haut de la section (moitié menu, moitié jus). */}
       <img
         src={fondFruits}
         alt=""
         aria-hidden="true"
         loading="lazy"
-        className="pointer-events-none absolute inset-0 size-full select-none object-cover opacity-40 mix-blend-multiply [mask-image:linear-gradient(to_bottom,transparent,black_30%)]"
+        className="pointer-events-none absolute inset-0 size-full select-none object-cover opacity-40 mix-blend-multiply"
       />
       <div className="relative mx-auto max-w-6xl px-4">
         <SectionPill>Jus frais maison</SectionPill>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarCheck, Check, Truck } from "lucide-react";
@@ -12,13 +13,35 @@ import { formatPrice } from "@core/lib/format";
  */
 export function SubscriptionCta() {
   const { data: plans = [] } = useQuery(plansQuery());
-  if (!CLIENT.subscriptions || plans.length === 0) return null;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const visible = CLIENT.subscriptions && plans.length > 0;
+
+  // Moitié sur le menu, moitié sur les jus : le chevauchement vaut la moitié de la hauteur du
+  // bandeau (qui change selon l'écran). La section des jus lit --abo-overlap pour réserver la place.
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!visible || !card) return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty("--abo-overlap", `${card.offsetHeight / 2}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--abo-overlap");
+    };
+  }, [visible]);
+
+  if (!visible) return null;
   const cheapest = Math.min(...plans.map((p) => p.price));
   const cheapestMeal = Math.min(...plans.map((p) => Math.round(p.price / p.meals_count)));
   return (
     // « abo-cta » : la section des jus réserve la place du bandeau qui la chevauche.
-    <section className="abo-cta relative z-20 -mb-24 -mt-6 px-4 lg:-mb-32 lg:-mt-12 lg:pt-16">
-      <div className="relative mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-sidebar text-sidebar-foreground shadow-warm lg:grid-cols-[1.1fr_1fr] lg:overflow-visible">
+    <section className="abo-cta relative z-20 mb-[calc(var(--abo-overlap,10rem)*-1)] mt-2 px-4 lg:mt-0 lg:pt-16">
+      <div
+        ref={cardRef}
+        className="relative mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-sidebar text-sidebar-foreground shadow-warm lg:grid-cols-[1.1fr_1fr] lg:overflow-visible"
+      >
         {/* fond graphique : halo et motif de points, rognés aux coins arrondis */}
         <div
           aria-hidden="true"

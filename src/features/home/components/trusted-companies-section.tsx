@@ -1,4 +1,5 @@
 import { Building2 } from "lucide-react";
+import { SectionPill } from "@/components/section-pill";
 import { MarqueeRow } from "@/components/marquee-row";
 
 import logoBanqueMondiale from "@/assets/partenaires/banque-mondiale.webp";
@@ -28,27 +29,20 @@ export function TrustedCompaniesSection() {
   return (
     <section
       id="entreprises"
-      className="relative scroll-mt-24 overflow-hidden bg-wine py-16 text-wine-foreground sm:py-20"
+      className="scroll-mt-24 border-b border-border/70 bg-background py-16 sm:py-20"
     >
-      {/* halo doux pour donner du relief au bordeaux */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-white/10 blur-3xl"
-      />
-      <div className="relative mx-auto max-w-6xl px-4 pb-10 text-center">
-        <span className="inline-flex rounded-full border border-wine-foreground/30 bg-wine-foreground/10 px-4 py-1.5 text-xs font-semibold text-wine-foreground backdrop-blur">
-          Ils nous font confiance
-        </span>
+      <div className="mx-auto max-w-6xl px-4 pb-10 text-center">
+        <SectionPill>Ils nous font confiance</SectionPill>
         <h2 className="mt-3 font-display text-3xl font-bold leading-tight sm:text-4xl">
           Les entreprises qui nous ont
-          <span className="block italic text-[#f3b8a0]">fait confiance.</span>
+          <span className="block italic text-accent">fait confiance.</span>
         </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-wine-foreground/80 sm:text-base">
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
           Déjeuners d'équipe, séminaires, réceptions et cocktails : des entreprises de Dakar
           comptent sur Ndelli's Traiteur pour régaler leurs collaborateurs et leurs invités.
         </p>
       </div>
-      <div className="relative flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <MarqueeRow duration="45s">
           {ROW_TOP.map((company, index) => (
             <CompanyCard key={`top-${company.name}-${index}`} company={company} />
@@ -66,7 +60,7 @@ export function TrustedCompaniesSection() {
 
 function CompanyCard({ company }: { company: Company }) {
   return (
-    <div className="flex h-20 w-48 shrink-0 items-center gap-4 rounded-2xl border border-white/20 bg-card px-6 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.5)] grayscale transition-all duration-300 hover:grayscale-0">
+    <div className="flex h-20 w-48 shrink-0 items-center gap-4 rounded-2xl border border-border/60 bg-card px-6 shadow-card grayscale transition-all duration-300 hover:grayscale-0 hover:shadow-warm">
       {company.logo ? (
         <img
           src={company.logo}

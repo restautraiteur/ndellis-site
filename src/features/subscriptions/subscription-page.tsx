@@ -369,7 +369,7 @@ function Builder() {
       if (result.payment_mode === "en_ligne") {
         try {
           const { url } = await payOnline({ data: { subscriptionId: result.id, pin: result.pin } });
-          if (url.startsWith("https://app.paydunya.com/")) {
+          if (url && /^https:\/\/(app\.|www\.)?paydunya\.com\//.test(url)) {
             window.location.href = url;
             return;
           }
@@ -1052,7 +1052,7 @@ function BalanceBox({ sub, balance, pin }: { sub: MySubscription; balance: numbe
   const mutation = useMutation({
     mutationFn: () => pay({ data: { subscriptionId: sub.id, pin } }),
     onSuccess: ({ url }) => {
-      if (url.startsWith("https://app.paydunya.com/")) window.location.href = url;
+      if (url && /^https:\/\/(app\.|www\.)?paydunya\.com\//.test(url)) window.location.href = url;
     },
     onError: (error: Error) => toast.error(error.message),
   });

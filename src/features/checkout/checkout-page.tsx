@@ -253,7 +253,7 @@ export function CheckoutPage() {
           }),
         );
       const { url } = await pay({ data: { orderId } });
-      if (!url.startsWith("https://app.paydunya.com/"))
+      if (!url || !/^https:\/\/(app\.|www\.)?paydunya\.com\//.test(url))
         throw new Error("Lien de paiement invalide. Réessayez.");
       const payload2 = {
         reference: result?.reference ?? pending?.reference,

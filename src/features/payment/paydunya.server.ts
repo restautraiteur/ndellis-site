@@ -9,6 +9,11 @@ const isTestMode = () => (process.env["PAYDUNYA_MODE"] ?? "").toLowerCase() === 
 const base = () =>
   isTestMode() ? "https://app.paydunya.com/sandbox-api/v1" : "https://app.paydunya.com/api/v1";
 
+/** Adresse de paiement PayDunya (réel : app.paydunya.com ; test : paydunya.com/sandbox-checkout). */
+export function isPaydunyaUrl(url: string | undefined | null) {
+  return !!url && /^https:\/\/(app\.|www\.)?paydunya\.com\//.test(url);
+}
+
 /** Clé lue sur Vercel, sans espaces ni retours à la ligne collés par erreur. */
 const key = (name: string) => (process.env[name] ?? "").trim();
 
@@ -62,7 +67,7 @@ export async function createInvoice(input: {
     !res.ok ||
     json?.response_code !== "00" ||
     !json.token ||
-    !json.response_text?.startsWith("https://app.paydunya.com/")
+    !isPaydunyaUrl(json.response_text)
   ) {
     console.error("PayDunya invoice rejected", {
       status: res.status,
@@ -75,7 +80,7 @@ export async function createInvoice(input: {
     throw new Error(
       keyError
         ? `Le paiement n'a pas pu démarrer : configuration PayDunya incorrecte (${json?.response_code ?? "?"} · ${json?.response_text?.slice(0, 80) ?? ""}, mode ${isTestMode() ? "test" : "réel"}). Votre panier est conservé.`
-        : "Le paiement n'a pas pu démarrer. Votre panier est conservé ; réessayez ou contactez-nous.",
+        : `Le paiement n'a pas pu démarrer (PayDunya ${json?.response_code ?? res.status}). Votre panier est conservé ; réessayez ou contactez-nous.`,
     );
   }
   return { url: json.response_text, token: json.token };

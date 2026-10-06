@@ -1,7 +1,13 @@
 import { getRequest } from "@tanstack/react-start/server";
 import { CLIENT } from "@/config/client";
 
-const BASE = "https://app.paydunya.com/api/v1";
+/**
+ * Mode PayDunya : « test » (PAYDUNYA_MODE=test, avec les clés de test, aucun vrai argent) ou réel
+ * (par défaut). Les clés de test et les clés réelles ne sont pas interchangeables.
+ */
+const isTestMode = () => (process.env["PAYDUNYA_MODE"] ?? "").toLowerCase() === "test";
+const base = () =>
+  isTestMode() ? "https://app.paydunya.com/sandbox-api/v1" : "https://app.paydunya.com/api/v1";
 
 function headers() {
   return {
@@ -32,7 +38,7 @@ export async function createInvoice(input: {
       "Le paiement est momentanément indisponible. Contactez-nous pour finaliser votre commande.",
     );
   }
-  const res = await fetch(`${BASE}/checkout-invoice/create`, {
+  const res = await fetch(`${base()}/checkout-invoice/create`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({
@@ -72,7 +78,7 @@ export async function createInvoice(input: {
 }
 
 export async function confirmInvoice(token: string) {
-  const res = await fetch(`${BASE}/checkout-invoice/confirm/${encodeURIComponent(token)}`, {
+  const res = await fetch(`${base()}/checkout-invoice/confirm/${encodeURIComponent(token)}`, {
     headers: headers(),
   });
   const json = (await res.json()) as {

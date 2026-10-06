@@ -37,5 +37,6 @@ le dépôt jumeau.
 | `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_PUBLISHABLE_KEY` | Clé publique Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé serveur (secrète) |
 | `PAYDUNYA_MASTER_KEY`, `PAYDUNYA_PRIVATE_KEY`, `PAYDUNYA_TOKEN` | Paiement PayDunya (production, compte du client) |
+| `PAYDUNYA_MODE` | `test` pour le mode test PayDunya (avec les clés de test, aucun vrai paiement) ; absent ou autre valeur = paiements réels |
 
 Les secrets ne vont jamais dans Git : uniquement dans Vercel, ou dans un fichier `.env` hors dépôt.

@@ -22,7 +22,7 @@ import { isCancelledError } from "@core/lib/db";
 import { publicMenuQuery } from "@core/domain/menu/api";
 import { juiceCatalogQuery } from "@core/domain/juices/api";
 import { startPayment } from "@/features/payment/paydunya.functions";
-import { useCart } from "@/features/cart/cart-context";
+import { useCart, type CartItem } from "@/features/cart/cart-context";
 import { checkSubscription, type SubscriptionCheck } from "@/features/subscriptions/api";
 import { CLIENT } from "@/config/client";
 import { formatDay, formatPrice, todayISO } from "@core/lib/format";
@@ -155,17 +155,37 @@ export function CheckoutPage() {
     );
   }, [items]);
 
+  // Produits qu'on ne peut plus commander, avec la raison (jour clos, retiré du menu, stock).
   const unavailable = useMemo(() => {
-    return items.filter((item) => {
+    const out: { item: CartItem; reason: string }[] = [];
+    for (const item of items) {
       if (item.source === "jus") {
-        if (!juices) return false;
+        if (!juices) continue;
         const row = juices.find((r) => r.variant_id === item.id);
-        return !row || row.state !== "disponible" || row.stock < item.quantity;
+        if (!row || row.state !== "disponible") out.push({ item, reason: "n'est plus en vente" });
+        else if (row.stock < item.quantity)
+          out.push({ item, reason: `il ne reste que ${Math.max(row.stock, 0)} bouteille(s)` });
+        continue;
       }
-      if (!menu) return false;
+      if (!menu) continue;
       const row = menu.find((r) => r.day_product_id === item.id);
-      return !row || row.state !== "disponible" || row.stock_left < item.quantity;
-    });
+      if (!row)
+        out.push({
+          item,
+          reason:
+            item.day_date && item.day_date < todayISO()
+              ? "cette journée est passée"
+              : "n'est plus au menu",
+        });
+      else if (row.state === "ferme")
+        out.push({ item, reason: "les commandes sont closes pour ce jour" });
+      else if (row.state !== "disponible" || row.stock_left < item.quantity)
+        out.push({
+          item,
+          reason: row.stock_left > 0 ? `il ne reste que ${row.stock_left} portion(s)` : "épuisé",
+        });
+    }
+    return out;
   }, [items, menu, juices]);
 
   const pay = useServerFn(startPayment);
@@ -401,9 +421,26 @@ export function CheckoutPage() {
                 {!items.some((i) => i.source === "jus") && <JuiceSuggestions />}
 
                 {unavailable.length > 0 && (
-                  <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                    Désolé, ces produits ne sont plus disponibles en quantité suffisante :{" "}
-                    {unavailable.map((i) => i.name).join(", ")}. Veuillez ajuster votre panier.
+                  <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                    <p className="font-semibold">Ces produits ne peuvent plus être commandés :</p>
+                    <ul className="list-disc space-y-0.5 pl-5">
+                      {unavailable.map(({ item, reason }) => (
+                        <li key={item.id}>
+                          {item.name}
+                          {item.day_date
+                            ? ` (${formatDay(item.day_date).toLowerCase()})`
+                            : ""} : {reason}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-destructive/40 bg-card text-destructive hover:bg-destructive/5"
+                      onClick={() => unavailable.forEach(({ item }) => remove(item.id))}
+                    >
+                      Retirer ces produits
+                    </Button>
                   </div>
                 )}
 

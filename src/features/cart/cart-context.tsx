@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { todayISO } from "@core/lib/format";
 
 export type CartItem = {
   /** `day_product_id` pour un produit du menu, `variant_id` pour un format de jus. */
@@ -44,7 +46,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(normalize(JSON.parse(raw)));
+      if (raw) {
+        // Les plats d'une journée déjà passée ne peuvent plus être commandés : on les retire.
+        const all = normalize(JSON.parse(raw));
+        const today = todayISO();
+        const kept = all.filter((i) => !i.day_date || i.day_date >= today);
+        setItems(kept);
+        if (kept.length < all.length) {
+          toast.info(
+            `${all.length - kept.length} plat(s) d'une journée passée retiré(s) de votre panier.`,
+          );
+        }
+      }
     } catch {
       /* ignore */
     }

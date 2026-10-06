@@ -3,6 +3,7 @@ import { ShoppingBag } from "lucide-react";
 import { Button } from "@ui/components/ui/button";
 import { useCart } from "@/features/cart/cart-context";
 import { formatPrice } from "@core/lib/format";
+import { CLIENT } from "@/config/client";
 
 export function CartBar() {
   const { count, total } = useCart();
@@ -14,7 +15,11 @@ export function CartBar() {
           <p className="font-semibold">
             {count} article(s) — {formatPrice(total)}
           </p>
-          <p className="text-muted-foreground">Précommande non remboursable</p>
+          <p className="text-muted-foreground">
+            {CLIENT.partners && !CLIENT.individualOrders
+              ? "Rien à payer · facturé à votre entreprise"
+              : "Précommande non remboursable"}
+          </p>
         </div>
         <Button asChild>
           <Link to="/commande">

@@ -7,7 +7,8 @@ import { publicMenuQuery } from "@core/domain/menu/api";
 import { formatDay, formatDayShort, todayISO } from "@core/lib/format";
 import { ProductSection } from "@/features/menu/components/product-section";
 import { SectionPill } from "@/components/section-pill";
-import { MonthMenuDialog } from "@/features/menu/components/month-menu-dialog";
+import { Link } from "@tanstack/react-router";
+import { CalendarDays } from "lucide-react";
 
 export function WeeklyMenu() {
   const { data, isLoading } = useQuery(publicMenuQuery());
@@ -55,7 +56,12 @@ export function WeeklyMenu() {
                 <h2 className="font-display text-4xl font-bold uppercase leading-none tracking-tight text-primary sm:text-6xl">
                   {days.length > 7 ? "Au menu ce mois-ci" : "Au menu cette semaine"}
                 </h2>
-                <MonthMenuDialog rows={rows} onPickDay={setActiveDay} />
+                <Link
+                  to="/menus"
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-semibold text-primary shadow-sm transition-colors hover:border-accent hover:text-accent"
+                >
+                  <CalendarDays className="size-4" /> Voir tous les menus du mois
+                </Link>
               </div>
               <Tabs value={currentDay ?? ""} onValueChange={setActiveDay} className="mt-6">
                 <TabsList

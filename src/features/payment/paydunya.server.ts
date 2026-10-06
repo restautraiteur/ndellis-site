@@ -9,12 +9,15 @@ const isTestMode = () => (process.env["PAYDUNYA_MODE"] ?? "").toLowerCase() === 
 const base = () =>
   isTestMode() ? "https://app.paydunya.com/sandbox-api/v1" : "https://app.paydunya.com/api/v1";
 
+/** Clé lue sur Vercel, sans espaces ni retours à la ligne collés par erreur. */
+const key = (name: string) => (process.env[name] ?? "").trim();
+
 function headers() {
   return {
     "Content-Type": "application/json",
-    "PAYDUNYA-MASTER-KEY": process.env["PAYDUNYA_MASTER_KEY"] ?? "",
-    "PAYDUNYA-PRIVATE-KEY": process.env["PAYDUNYA_PRIVATE_KEY"] ?? "",
-    "PAYDUNYA-TOKEN": process.env["PAYDUNYA_TOKEN"] ?? "",
+    "PAYDUNYA-MASTER-KEY": key("PAYDUNYA_MASTER_KEY"),
+    "PAYDUNYA-PRIVATE-KEY": key("PAYDUNYA_PRIVATE_KEY"),
+    "PAYDUNYA-TOKEN": key("PAYDUNYA_TOKEN"),
   };
 }
 
@@ -29,11 +32,7 @@ export async function createInvoice(input: {
   cancelPath?: string;
   returnPath?: string;
 }) {
-  if (
-    !process.env["PAYDUNYA_MASTER_KEY"] ||
-    !process.env["PAYDUNYA_PRIVATE_KEY"] ||
-    !process.env["PAYDUNYA_TOKEN"]
-  ) {
+  if (!key("PAYDUNYA_MASTER_KEY") || !key("PAYDUNYA_PRIVATE_KEY") || !key("PAYDUNYA_TOKEN")) {
     throw new Error(
       "Le paiement est momentanément indisponible. Contactez-nous pour finaliser votre commande.",
     );
@@ -70,8 +69,13 @@ export async function createInvoice(input: {
       code: json?.response_code,
       reason: json?.response_text?.slice(0, 250),
     });
+    // Clés refusées par PayDunya (mauvaise clé, ou clé réelle en mode test et inversement) : on le
+    // dit clairement, sans afficher les clés.
+    const keyError = /key|cl[ée]|token|master|private/i.test(json?.response_text ?? "");
     throw new Error(
-      "Le paiement n'a pas pu démarrer. Votre panier est conservé ; réessayez ou contactez-nous.",
+      keyError
+        ? `Le paiement n'a pas pu démarrer : configuration PayDunya incorrecte (${json?.response_code ?? "?"} · ${json?.response_text?.slice(0, 80) ?? ""}, mode ${isTestMode() ? "test" : "réel"}). Votre panier est conservé.`
+        : "Le paiement n'a pas pu démarrer. Votre panier est conservé ; réessayez ou contactez-nous.",
     );
   }
   return { url: json.response_text, token: json.token };

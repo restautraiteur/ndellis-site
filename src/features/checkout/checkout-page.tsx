@@ -629,7 +629,7 @@ export function CheckoutPage() {
 
               {partnerMode && (
                 <aside className="lg:sticky lg:top-24 lg:self-start">
-                  <PartnerOrderPanel items={items} onDone={clear} />
+                  <PartnerOrderPanel items={items} onDone={clear} onRemove={remove} />
                 </aside>
               )}
               {!partnerMode && (

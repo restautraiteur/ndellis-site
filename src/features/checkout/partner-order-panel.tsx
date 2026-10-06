@@ -9,6 +9,7 @@ import { Label } from "@ui/components/ui/label";
 import type { CartItem } from "@/features/cart/cart-context";
 import { db } from "@core/lib/db";
 import { formatDay, formatPrice } from "@core/lib/format";
+import { cn } from "@core/lib/utils";
 
 export const partnersQuery = () =>
   queryOptions({
@@ -24,7 +25,15 @@ export const partnersQuery = () =>
  * Récapitulatif d'une commande entreprise : l'employé choisit son entreprise partenaire, donne son
  * nom et son téléphone, et valide. Rien à payer : livraison avec ses collègues, facturé à l'entreprise.
  */
-export function PartnerOrderPanel({ items, onDone }: { items: CartItem[]; onDone: () => void }) {
+export function PartnerOrderPanel({
+  items,
+  onDone,
+  onRemove,
+}: {
+  items: CartItem[];
+  onDone: () => void;
+  onRemove: (id: string) => void;
+}) {
   const navigate = useNavigate();
   const { data: partners = [] } = useQuery(partnersQuery());
   const [partnerId, setPartnerId] = useState("");
@@ -32,7 +41,28 @@ export function PartnerOrderPanel({ items, onDone }: { items: CartItem[]; onDone
   const [phone, setPhone] = useState("");
   const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const partner = partners.find((p) => p.id === partnerId);
-  const valid = !!partnerId && fullName.trim().length >= 2 && phone.replace(/\D/g, "").length >= 7;
+  // Jours dont l'heure limite de l'entreprise est passée (calculé par le serveur, heure de Dakar).
+  const menuDays = [...new Set(items.filter((i) => i.day_date).map((i) => i.day_date!))].sort();
+  const { data: closedDays = [] } = useQuery({
+    queryKey: ["partner_closed_days", partnerId, menuDays.join(",")],
+    enabled: !!partnerId && menuDays.length > 0,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("partner_closed_days", {
+        p_partner: partnerId,
+        p_days: menuDays,
+      });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { day_date: string; deadline: string }[];
+    },
+  });
+  const closedSet = new Set(closedDays.map((d) => d.day_date));
+  const closedItems = items.filter((i) => i.day_date && closedSet.has(i.day_date));
+  const valid =
+    !!partnerId &&
+    fullName.trim().length >= 2 &&
+    phone.replace(/\D/g, "").length >= 7 &&
+    closedItems.length === 0;
 
   // Plats classés par jour (les jus, sans jour, à la fin).
   const byDay = new Map<string, CartItem[]>();
@@ -94,9 +124,16 @@ export function PartnerOrderPanel({ items, onDone }: { items: CartItem[]; onDone
 
       <ul className="space-y-3">
         {days.map(([day, dayItems]) => (
-          <li key={day || "jus"} className="rounded-xl bg-muted/40 p-3">
+          <li
+            key={day || "jus"}
+            className={cn(
+              "rounded-xl p-3",
+              closedSet.has(day) ? "bg-destructive/10 ring-1 ring-destructive/30" : "bg-muted/40",
+            )}
+          >
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {day ? formatDay(day) : "Jus"}
+              {closedSet.has(day) && <span className="ml-1 text-destructive">· clos</span>}
             </p>
             <ul className="mt-1.5 space-y-1">
               {dayItems.map((item) => (
@@ -165,6 +202,30 @@ export function PartnerOrderPanel({ items, onDone }: { items: CartItem[]; onDone
               onChange={(e) => setPhone(e.target.value)}
             />
           </div>
+
+          {closedItems.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="font-semibold">
+                Commandes closes pour {partner?.name ?? "votre entreprise"} :
+              </p>
+              <ul className="list-disc space-y-0.5 pl-5">
+                {closedDays.map((d) => (
+                  <li key={d.day_date}>
+                    {formatDay(d.day_date)} : heure limite dépassée depuis le {d.deadline}
+                  </li>
+                ))}
+              </ul>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-destructive/40 bg-card text-destructive hover:bg-destructive/5"
+                onClick={() => closedItems.forEach((i) => onRemove(i.id))}
+              >
+                Retirer ces plats
+              </Button>
+            </div>
+          )}
 
           <div className="space-y-1 border-t border-border pt-4">
             <div className="flex items-baseline justify-between">

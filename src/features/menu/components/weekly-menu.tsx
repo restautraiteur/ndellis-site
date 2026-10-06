@@ -26,8 +26,15 @@ export function WeeklyMenu() {
   useEffect(() => {
     if (currentDay && scrollRef.current) {
       const btn = dayRefs.current.get(currentDay);
+      const bar = scrollRef.current;
       if (btn) {
-        btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        // Centre l'onglet du jour dans sa barre seulement : scrollIntoView ferait aussi défiler la
+        // page vers le bas à l'ouverture.
+        const offset = btn.getBoundingClientRect().left - bar.getBoundingClientRect().left;
+        bar.scrollTo({
+          left: bar.scrollLeft + offset - bar.clientWidth / 2 + btn.clientWidth / 2,
+          behavior: "smooth",
+        });
       }
     }
   }, [currentDay]);

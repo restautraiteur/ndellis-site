@@ -7,6 +7,7 @@ import { publicMenuQuery } from "@core/domain/menu/api";
 import { formatDay, formatDayShort, todayISO } from "@core/lib/format";
 import { ProductSection } from "@/features/menu/components/product-section";
 import { SectionPill } from "@/components/section-pill";
+import { MonthMenuDialog } from "@/features/menu/components/month-menu-dialog";
 
 export function WeeklyMenu() {
   const { data, isLoading } = useQuery(publicMenuQuery());
@@ -49,10 +50,13 @@ export function WeeklyMenu() {
         ) : (
           <>
             <div className="no-print mb-10">
-              <SectionPill>Menu de la semaine</SectionPill>
-              <h2 className="mt-3 font-display text-4xl font-bold uppercase leading-none tracking-tight text-primary sm:text-6xl">
-                Au menu cette semaine
-              </h2>
+              <SectionPill>{days.length > 7 ? "Menu du mois" : "Menu de la semaine"}</SectionPill>
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                <h2 className="font-display text-4xl font-bold uppercase leading-none tracking-tight text-primary sm:text-6xl">
+                  {days.length > 7 ? "Au menu ce mois-ci" : "Au menu cette semaine"}
+                </h2>
+                <MonthMenuDialog rows={rows} onPickDay={setActiveDay} />
+              </div>
               <Tabs value={currentDay ?? ""} onValueChange={setActiveDay} className="mt-6">
                 <TabsList
                   ref={scrollRef}

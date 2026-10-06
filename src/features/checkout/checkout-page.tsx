@@ -13,6 +13,7 @@ import { Checkbox } from "@ui/components/ui/checkbox";
 import { useServerFn } from "@tanstack/react-start";
 import { DEPOSIT_AMOUNT, placeOrder } from "@/features/checkout/api";
 import { JuiceSuggestions } from "@/features/checkout/juice-suggestions";
+import { PartnerOrderPanel } from "@/features/checkout/partner-order-panel";
 import fondCommande from "@/assets/fond-composer-abonnement.jpg";
 import decoAil from "@/assets/deco-ail.webp";
 import decoPoivre from "@/assets/deco-poivre.webp";
@@ -48,6 +49,11 @@ export function CheckoutPage() {
   const { data: menu } = useQuery(publicMenuQuery());
   const { data: juices } = useQuery(juiceCatalogQuery());
   const [accepted, setAccepted] = useState(false);
+  // Employé d'une entreprise partenaire : commande facturée à l'entreprise (pas de livraison à saisir, pas de paiement).
+  // Sans livraisons individuelles (CLIENT.individualOrders = false), toutes les commandes sont des
+  // commandes entreprise.
+  const partnerOnly = CLIENT.partners && !CLIENT.individualOrders;
+  const [partnerMode, setPartnerMode] = useState<boolean>(partnerOnly);
   // Commande du jour uniquement : le client peut payer à la livraison (les précommandes gardent l'acompte).
   const [payMode, setPayMode] = useState<"en_ligne" | "livraison">("en_ligne");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -309,9 +315,13 @@ export function CheckoutPage() {
         />
         <div className="relative mx-auto max-w-5xl px-4 pb-24 pt-36 sm:pt-44">
           <p className="text-xs font-bold uppercase tracking-widest text-accent">Commande</p>
-          <h1 className="mt-2 font-display text-4xl font-bold sm:text-5xl">Ma précommande</h1>
+          <h1 className="mt-2 font-display text-4xl font-bold sm:text-5xl">
+            {partnerOnly ? "Mon panier" : "Ma précommande"}
+          </h1>
           <p className="mt-2 max-w-xl text-sm text-sidebar-foreground/80">
-            Vérifiez vos plats, ajoutez un jus si le cœur vous en dit, puis indiquez où livrer.
+            {partnerOnly
+              ? "Vérifiez vos plats jour par jour, choisissez votre entreprise partenaire et validez : rien à payer."
+              : "Vérifiez vos plats, ajoutez un jus si le cœur vous en dit, puis indiquez où livrer."}
           </p>
         </div>
       </section>
@@ -397,298 +407,360 @@ export function CheckoutPage() {
                   </div>
                 )}
 
-                <section className="surface-card space-y-4 p-4">
-                  <h2 className="font-display text-lg font-bold text-primary">
-                    Informations de livraison
-                  </h2>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field
-                      id="last_name"
-                      label="Nom *"
-                      value={form.last_name}
-                      error={errors["last_name"]}
-                      onChange={(v) => setForm({ ...form, last_name: v })}
-                    />
-                    <Field
-                      id="first_name"
-                      label="Prénom *"
-                      value={form.first_name}
-                      error={errors["first_name"]}
-                      onChange={(v) => setForm({ ...form, first_name: v })}
-                    />
-                    <Field
-                      id="phone"
-                      label="Téléphone *"
-                      value={form.phone}
-                      error={errors["phone"]}
-                      onChange={(v) => setForm({ ...form, phone: v })}
-                    />
-                    <Field
-                      id="address"
-                      label="Adresse de livraison *"
-                      value={form.address}
-                      error={errors["address"]}
-                      onChange={(v) => setForm({ ...form, address: v })}
-                    />
-                    <Field
-                      id="address_extra"
-                      label="Complément d'adresse"
-                      value={form.address_extra}
-                      onChange={(v) => setForm({ ...form, address_extra: v })}
-                    />
-                    <Field
-                      id="landmark"
-                      label="Point de repère"
-                      value={form.landmark}
-                      onChange={(v) => setForm({ ...form, landmark: v })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="instructions">Instructions de livraison</Label>
-                    <Textarea
-                      id="instructions"
-                      maxLength={500}
-                      value={form.instructions}
-                      onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-                    />
-                  </div>
-                </section>
-
-                {CLIENT.subscriptions && (
+                {CLIENT.partners && !partnerOnly && (
                   <section className="surface-card space-y-3 p-4">
-                    <h2 className="flex items-center gap-2 font-display text-lg font-bold text-primary">
-                      <KeyRound className="size-5" /> Vous êtes abonné ?
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Entrez votre code abonné (avec le téléphone ci-dessus) : un plat par jour, du
-                      lundi au vendredi, est compté sur votre abonnement.
-                    </p>
-                    <form
-                      className="flex flex-wrap gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (/^\d{4}$/.test(subPin) && form.phone.replace(/\D/g, "").length >= 7)
-                          verifySub.mutate();
-                      }}
+                    <h2 className="font-display text-lg font-bold text-primary">Livraison</h2>
+                    <div
+                      role="radiogroup"
+                      aria-label="Type de livraison"
+                      className="grid gap-3 sm:grid-cols-2"
                     >
-                      <Input
-                        className="w-36"
-                        placeholder="Code à 4 chiffres"
-                        inputMode="numeric"
-                        maxLength={4}
-                        value={subPin}
-                        onChange={(e) => {
-                          setSubPin(e.target.value.replace(/\D/g, ""));
-                          setSubCheck(null);
-                        }}
-                      />
-                      <Button
-                        type="submit"
-                        variant="secondary"
-                        disabled={
-                          !/^\d{4}$/.test(subPin) ||
-                          form.phone.replace(/\D/g, "").length < 7 ||
-                          verifySub.isPending
-                        }
-                      >
-                        {verifySub.isPending ? "Vérification…" : "Utiliser mon abonnement"}
-                      </Button>
-                    </form>
-                    {form.phone.replace(/\D/g, "").length < 7 && subPin.length === 4 && (
-                      <p className="text-xs text-muted-foreground">
-                        Indiquez d'abord votre téléphone dans les informations de livraison.
-                      </p>
-                    )}
-                    {subCheck && !subCheck.ok && (
-                      <p className="text-sm text-destructive">{subCheck.error}</p>
-                    )}
-                    {subCheck?.ok && (
-                      <div className="space-y-2 rounded-lg bg-success/10 p-3 text-sm">
-                        <p className="font-semibold">
-                          {subCheck.customer_name} · {subCheck.plan_name} · {subCheck.remaining}{" "}
-                          repas restant{subCheck.remaining > 1 ? "s" : ""}
-                        </p>
-                        {subCheck.days.length === 0 && (
-                          <p>Ajoutez un plat du jour au panier pour utiliser votre abonnement.</p>
-                        )}
-                        <ul className="space-y-1">
-                          {subCheck.days.map((d) => (
-                            <li key={d.date}>
-                              {d.covered ? "✅" : "⛔"} {formatDay(d.date)} :{" "}
-                              {d.covered ? "1 plat compté sur l'abonnement" : d.reason}
-                            </li>
-                          ))}
-                        </ul>
-                        {coveredDays.length > 0 && (
-                          <p className="text-muted-foreground">
-                            Après cette commande, il vous restera {subCheck.remaining_after} repas.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </section>
-                )}
-              </div>
-
-              <aside className="lg:sticky lg:top-24 lg:self-start">
-                <div className="surface-card space-y-5 p-5 sm:p-7">
-                  <h2 className="font-display text-2xl font-bold text-primary">Récapitulatif</h2>
-                  <ul className="space-y-2.5 text-base">
-                    {items.map((item) => (
-                      <li key={item.id} className="flex justify-between gap-3">
-                        <span className="text-muted-foreground">
-                          {item.quantity} × {item.name}
-                        </span>
-                        <span className="font-medium">
-                          {formatPrice(item.price * item.quantity)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {discount > 0 && (
-                    <div className="flex justify-between text-sm text-success">
-                      <span>Abonnement ({coveredDays.length} repas)</span>
-                      <span className="font-medium">− {formatPrice(discount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-border pt-4 text-2xl font-bold">
-                    <span>Total</span>
-                    <span>{formatPrice(payable)}</span>
-                  </div>
-
-                  {!isPreorder && payable > 0 && (
-                    <div role="radiogroup" aria-label="Mode de paiement" className="grid gap-2">
                       {(
                         [
-                          ["en_ligne", "Payer en ligne", "Wave, Orange Money, Free Money ou carte"],
                           [
-                            "livraison",
-                            "Payer à la livraison",
-                            "En espèces ou par Wave au livreur",
+                            true,
+                            "Mon entreprise est partenaire",
+                            "Livré avec mes collègues, facturé à l'entreprise : rien à payer.",
+                          ],
+                          [
+                            false,
+                            "Livraison individuelle",
+                            "À l'adresse de votre choix, paiement en ligne ou à la livraison.",
                           ],
                         ] as const
                       ).map(([value, title, text]) => (
                         <button
-                          key={value}
+                          key={title}
                           type="button"
                           role="radio"
-                          aria-checked={payMode === value}
-                          onClick={() => setPayMode(value)}
+                          aria-checked={partnerMode === value}
+                          onClick={() => setPartnerMode(value)}
                           className={cn(
-                            "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors",
-                            payMode === value
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/40",
+                            "rounded-xl border p-4 text-left transition-colors",
+                            partnerMode === value
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-border hover:border-primary/50",
                           )}
                         >
-                          <span
-                            className={cn(
-                              "mt-0.5 size-4 shrink-0 rounded-full border-2",
-                              payMode === value ? "border-primary bg-primary" : "border-border",
-                            )}
-                          />
-                          <span>
-                            <span className="block text-sm font-semibold">{title}</span>
-                            <span className="block text-xs text-muted-foreground">{text}</span>
-                          </span>
+                          <span className="block font-semibold">{title}</span>
+                          <span className="mt-1 block text-sm text-muted-foreground">{text}</span>
                         </button>
                       ))}
                     </div>
-                  )}
+                  </section>
+                )}
 
-                  {payable === 0 ? (
-                    <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
-                      Rien à payer : votre commande est entièrement comptée sur votre abonnement.
-                    </div>
-                  ) : onDelivery ? (
-                    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold text-primary">À payer à la livraison</span>
-                        <span className="text-2xl font-bold text-primary">
-                          {formatPrice(payable)}
-                        </span>
+                {partnerMode ? null : (
+                  <>
+                    <section className="surface-card space-y-4 p-4">
+                      <h2 className="font-display text-lg font-bold text-primary">
+                        Informations de livraison
+                      </h2>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field
+                          id="last_name"
+                          label="Nom *"
+                          value={form.last_name}
+                          error={errors["last_name"]}
+                          onChange={(v) => setForm({ ...form, last_name: v })}
+                        />
+                        <Field
+                          id="first_name"
+                          label="Prénom *"
+                          value={form.first_name}
+                          error={errors["first_name"]}
+                          onChange={(v) => setForm({ ...form, first_name: v })}
+                        />
+                        <Field
+                          id="phone"
+                          label="Téléphone *"
+                          value={form.phone}
+                          error={errors["phone"]}
+                          onChange={(v) => setForm({ ...form, phone: v })}
+                        />
+                        <Field
+                          id="address"
+                          label="Adresse de livraison *"
+                          value={form.address}
+                          error={errors["address"]}
+                          onChange={(v) => setForm({ ...form, address: v })}
+                        />
+                        <Field
+                          id="address_extra"
+                          label="Complément d'adresse"
+                          value={form.address_extra}
+                          onChange={(v) => setForm({ ...form, address_extra: v })}
+                        />
+                        <Field
+                          id="landmark"
+                          label="Point de repère"
+                          value={form.landmark}
+                          onChange={(v) => setForm({ ...form, landmark: v })}
+                        />
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Rien à payer maintenant : vous réglez le livreur à la réception.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold text-primary">À payer maintenant</span>
-                        <span className="text-2xl font-bold text-primary">
-                          {formatPrice(due.now)}
-                        </span>
+                      <div className="space-y-2">
+                        <Label htmlFor="instructions">Instructions de livraison</Label>
+                        <Textarea
+                          id="instructions"
+                          maxLength={500}
+                          value={form.instructions}
+                          onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+                        />
                       </div>
-                      {isPreorder && (
-                        <ul className="space-y-1 text-sm text-muted-foreground">
-                          {due.todayAmount > 0 && (
-                            <li className="flex justify-between gap-3">
-                              <span>Plats d'aujourd'hui (en entier)</span>
-                              <span>{formatPrice(due.todayAmount)}</span>
-                            </li>
-                          )}
-                          {due.preorderPlates > 0 && (
-                            <li className="flex justify-between gap-3">
-                              <span>
-                                Acompte précommande : {due.preorderPlates} plat
-                                {due.preorderPlates > 1 ? "s" : ""} × {formatPrice(DEPOSIT_AMOUNT)}
-                              </span>
-                              <span>{formatPrice(due.preorderAmount)}</span>
-                            </li>
-                          )}
-                          {due.juicesNow > 0 && (
-                            <li className="flex justify-between gap-3">
-                              <span>Jus (livrés aujourd'hui)</span>
-                              <span>{formatPrice(due.juicesNow)}</span>
-                            </li>
-                          )}
-                          <li className="flex justify-between gap-3 border-t border-border pt-1 font-semibold text-foreground">
-                            <span>Reste à payer à la livraison</span>
-                            <span>{formatPrice(due.later)}</span>
-                          </li>
-                        </ul>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
-                        bancaire.
-                        {isPreorder && " L'acompte n'est pas remboursable."}
-                      </p>
-                    </div>
-                  )}
+                    </section>
 
-                  <div className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
-                    <strong>Important :</strong> toute commande validée est non remboursable.
+                    {CLIENT.subscriptions && (
+                      <section className="surface-card space-y-3 p-4">
+                        <h2 className="flex items-center gap-2 font-display text-lg font-bold text-primary">
+                          <KeyRound className="size-5" /> Vous êtes abonné ?
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Entrez votre code abonné (avec le téléphone ci-dessus) : un plat par jour,
+                          du lundi au vendredi, est compté sur votre abonnement.
+                        </p>
+                        <form
+                          className="flex flex-wrap gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            if (/^\d{4}$/.test(subPin) && form.phone.replace(/\D/g, "").length >= 7)
+                              verifySub.mutate();
+                          }}
+                        >
+                          <Input
+                            className="w-36"
+                            placeholder="Code à 4 chiffres"
+                            inputMode="numeric"
+                            maxLength={4}
+                            value={subPin}
+                            onChange={(e) => {
+                              setSubPin(e.target.value.replace(/\D/g, ""));
+                              setSubCheck(null);
+                            }}
+                          />
+                          <Button
+                            type="submit"
+                            variant="secondary"
+                            disabled={
+                              !/^\d{4}$/.test(subPin) ||
+                              form.phone.replace(/\D/g, "").length < 7 ||
+                              verifySub.isPending
+                            }
+                          >
+                            {verifySub.isPending ? "Vérification…" : "Utiliser mon abonnement"}
+                          </Button>
+                        </form>
+                        {form.phone.replace(/\D/g, "").length < 7 && subPin.length === 4 && (
+                          <p className="text-xs text-muted-foreground">
+                            Indiquez d'abord votre téléphone dans les informations de livraison.
+                          </p>
+                        )}
+                        {subCheck && !subCheck.ok && (
+                          <p className="text-sm text-destructive">{subCheck.error}</p>
+                        )}
+                        {subCheck?.ok && (
+                          <div className="space-y-2 rounded-lg bg-success/10 p-3 text-sm">
+                            <p className="font-semibold">
+                              {subCheck.customer_name} · {subCheck.plan_name} · {subCheck.remaining}{" "}
+                              repas restant{subCheck.remaining > 1 ? "s" : ""}
+                            </p>
+                            {subCheck.days.length === 0 && (
+                              <p>
+                                Ajoutez un plat du jour au panier pour utiliser votre abonnement.
+                              </p>
+                            )}
+                            <ul className="space-y-1">
+                              {subCheck.days.map((d) => (
+                                <li key={d.date}>
+                                  {d.covered ? "✅" : "⛔"} {formatDay(d.date)} :{" "}
+                                  {d.covered ? "1 plat compté sur l'abonnement" : d.reason}
+                                </li>
+                              ))}
+                            </ul>
+                            {coveredDays.length > 0 && (
+                              <p className="text-muted-foreground">
+                                Après cette commande, il vous restera {subCheck.remaining_after}{" "}
+                                repas.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </section>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {partnerMode && (
+                <aside className="lg:sticky lg:top-24 lg:self-start">
+                  <PartnerOrderPanel items={items} onDone={clear} />
+                </aside>
+              )}
+              {!partnerMode && (
+                <aside className="lg:sticky lg:top-24 lg:self-start">
+                  <div className="surface-card space-y-5 p-5 sm:p-7">
+                    <h2 className="font-display text-2xl font-bold text-primary">Récapitulatif</h2>
+                    <ul className="space-y-2.5 text-base">
+                      {items.map((item) => (
+                        <li key={item.id} className="flex justify-between gap-3">
+                          <span className="text-muted-foreground">
+                            {item.quantity} × {item.name}
+                          </span>
+                          <span className="font-medium">
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-sm text-success">
+                        <span>Abonnement ({coveredDays.length} repas)</span>
+                        <span className="font-medium">− {formatPrice(discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-border pt-4 text-2xl font-bold">
+                      <span>Total</span>
+                      <span>{formatPrice(payable)}</span>
+                    </div>
+
+                    {!isPreorder && payable > 0 && (
+                      <div role="radiogroup" aria-label="Mode de paiement" className="grid gap-2">
+                        {(
+                          [
+                            [
+                              "en_ligne",
+                              "Payer en ligne",
+                              "Wave, Orange Money, Free Money ou carte",
+                            ],
+                            [
+                              "livraison",
+                              "Payer à la livraison",
+                              "En espèces ou par Wave au livreur",
+                            ],
+                          ] as const
+                        ).map(([value, title, text]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            role="radio"
+                            aria-checked={payMode === value}
+                            onClick={() => setPayMode(value)}
+                            className={cn(
+                              "flex items-start gap-3 rounded-xl border-2 p-3 text-left transition-colors",
+                              payMode === value
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/40",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "mt-0.5 size-4 shrink-0 rounded-full border-2",
+                                payMode === value ? "border-primary bg-primary" : "border-border",
+                              )}
+                            />
+                            <span>
+                              <span className="block text-sm font-semibold">{title}</span>
+                              <span className="block text-xs text-muted-foreground">{text}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {payable === 0 ? (
+                      <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-semibold text-success">
+                        Rien à payer : votre commande est entièrement comptée sur votre abonnement.
+                      </div>
+                    ) : onDelivery ? (
+                      <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="font-semibold text-primary">À payer à la livraison</span>
+                          <span className="text-2xl font-bold text-primary">
+                            {formatPrice(payable)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Rien à payer maintenant : vous réglez le livreur à la réception.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="font-semibold text-primary">À payer maintenant</span>
+                          <span className="text-2xl font-bold text-primary">
+                            {formatPrice(due.now)}
+                          </span>
+                        </div>
+                        {isPreorder && (
+                          <ul className="space-y-1 text-sm text-muted-foreground">
+                            {due.todayAmount > 0 && (
+                              <li className="flex justify-between gap-3">
+                                <span>Plats d'aujourd'hui (en entier)</span>
+                                <span>{formatPrice(due.todayAmount)}</span>
+                              </li>
+                            )}
+                            {due.preorderPlates > 0 && (
+                              <li className="flex justify-between gap-3">
+                                <span>
+                                  Acompte précommande : {due.preorderPlates} plat
+                                  {due.preorderPlates > 1 ? "s" : ""} ×{" "}
+                                  {formatPrice(DEPOSIT_AMOUNT)}
+                                </span>
+                                <span>{formatPrice(due.preorderAmount)}</span>
+                              </li>
+                            )}
+                            {due.juicesNow > 0 && (
+                              <li className="flex justify-between gap-3">
+                                <span>Jus (livrés aujourd'hui)</span>
+                                <span>{formatPrice(due.juicesNow)}</span>
+                              </li>
+                            )}
+                            <li className="flex justify-between gap-3 border-t border-border pt-1 font-semibold text-foreground">
+                              <span>Reste à payer à la livraison</span>
+                              <span>{formatPrice(due.later)}</span>
+                            </li>
+                          </ul>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Paiement sécurisé par PayDunya : Wave, Orange Money, Free Money ou carte
+                          bancaire.
+                          {isPreorder && " L'acompte n'est pas remboursable."}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="rounded-lg bg-secondary p-3 text-sm text-secondary-foreground">
+                      <strong>Important :</strong> toute commande validée est non remboursable.
+                    </div>
+
+                    <label className="flex items-start gap-3 text-sm">
+                      <Checkbox
+                        checked={accepted}
+                        onCheckedChange={(checked) => setAccepted(checked === true)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        J'ai pris connaissance et j'accepte que ma commande (et l'acompte de{" "}
+                        {formatPrice(DEPOSIT_AMOUNT)} par plat précommandé) soit non remboursable.
+                      </span>
+                    </label>
+
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={!accepted || mutation.isPending}
+                      onClick={submit}
+                    >
+                      {mutation.isPending
+                        ? payable === 0 || onDelivery
+                          ? "Validation…"
+                          : "Redirection vers le paiement…"
+                        : payable === 0 || onDelivery
+                          ? "Valider ma commande"
+                          : `Payer ${formatPrice(due.now)}`}
+                    </Button>
                   </div>
-
-                  <label className="flex items-start gap-3 text-sm">
-                    <Checkbox
-                      checked={accepted}
-                      onCheckedChange={(checked) => setAccepted(checked === true)}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      J'ai pris connaissance et j'accepte que ma commande (et l'acompte de{" "}
-                      {formatPrice(DEPOSIT_AMOUNT)} par plat précommandé) soit non remboursable.
-                    </span>
-                  </label>
-
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    disabled={!accepted || mutation.isPending}
-                    onClick={submit}
-                  >
-                    {mutation.isPending
-                      ? payable === 0 || onDelivery
-                        ? "Validation…"
-                        : "Redirection vers le paiement…"
-                      : payable === 0 || onDelivery
-                        ? "Valider ma commande"
-                        : `Payer ${formatPrice(due.now)}`}
-                  </Button>
-                </div>
-              </aside>
+                </aside>
+              )}
             </div>
           )}
         </main>

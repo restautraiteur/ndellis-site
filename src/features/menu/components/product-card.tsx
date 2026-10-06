@@ -83,6 +83,11 @@ export function ProductCard({ row }: { row: MenuRow }) {
 
       <div className="relative mt-4 flex items-center gap-4 rounded-2xl border border-border/60 bg-card px-5 py-4 shadow-card transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-warm">
         <div className="min-w-0 flex-1">
+          {row.dish_category && (
+            <span className="mb-1 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              {row.dish_category}
+            </span>
+          )}
           <h4 className="truncate text-lg font-medium text-foreground">{row.name}</h4>
           <p className="mt-0.5 font-bold text-foreground">{formatPrice(row.price)}</p>
         </div>

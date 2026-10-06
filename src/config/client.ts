@@ -8,6 +8,8 @@ export const CLIENT = {
   name: "Ndelli's Traiteur",
   /** Nom complet (pied de page, texte alternatif du logo). */
   legalName: "Le Ndelli's NDS Traiteur",
+  /** Nom court affiché à côté du logo dans le menu. */
+  brand: "Traiteur",
   /** Numéro WhatsApp au format international, sans « + » ni espaces. */
   whatsapp: "221781867272",
   /** Le même numéro tel qu'affiché sur le site. */
@@ -16,6 +18,10 @@ export const CLIENT = {
   city: "Dakar",
   /** Abonnements repas activés sur le site. */
   subscriptions: true,
+  /** Module « Entreprises partenaires » (désactivé pour l'instant). */
+  partners: false,
+  /** Livraisons individuelles (adresse + paiement). */
+  individualOrders: true,
 } as const;
 
 /** Lien WhatsApp du restaurant. */
